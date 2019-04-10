@@ -2,50 +2,15 @@ package index;
 import java.util.ArrayList;
 import java.util.Collections;
 
-class Entry<K extends Comparable<K>, V> implements Comparable<Entry<K, V>>{
-    K key;
-    V val;
-    boolean hook;
-    Node<K, V> child;
+public final class BPlusTree<K extends Comparable<K>, V> {
 
-    Entry(K key, V val, Node<K, V> child) {
-        this.key = key;
-        this.val = val;
-        this.child = child;
-        this.hook = false;
-    }
-
-    @Override
-    public int compareTo(Entry<K, V> entry) {
-        if(hook) return -1;
-        if(entry.hook) return 1;
-        return key.compareTo(entry.key);
-    }
-}
-
-class Node<K extends Comparable<K>, V> {
-    int size;
-    ArrayList<Entry<K, V>> subNodes;
-
-    Node(int size) {
-        subNodes = new ArrayList<>(BPlusTree.M);
-        while (subNodes.size() < BPlusTree.M)
-            subNodes.add(null);
-        this.size = size;
-    }
-}
-
-public class BPlusTree<K extends Comparable<K>, V> {
-    static final int M = 4;
-    private Node<K, V> root;
+    private static final int M = 4;
+    private Node root;
     private int height;
     private int size;
 
     public BPlusTree() {
-        root = new Node<>(1);
-        Entry<K, V> entry = new Entry<>(null, null, null);
-        entry.hook = true;
-        root.subNodes.set(0, entry);
+        root = new LeafNode(0);
     }
 
     public int size() {
@@ -53,98 +18,346 @@ public class BPlusTree<K extends Comparable<K>, V> {
     }
 
     public int height() {
-        return height;
+        return root.getSize() == 0?height:height + 1;
     }
 
     public V get(K key) {
-        if (key == null) throw new IllegalArgumentException("key shouldn't be null");
-        return search(root, key, height);
-    }
-
-    private V search(Node<K, V> node, K key, int height) {
-        ArrayList<Entry<K, V>> subNodes = node.subNodes;
-        int index = Collections.binarySearch(subNodes.subList(0, node.size), new Entry<>(key, null, null));
-        if (height == 0) {
-            if (index >= 0)
-                return subNodes.get(index).val;
-        } else {
-            index = index >= 0 ? index : (-index - 2);
-            return search(subNodes.get(index).child, key, height - 1);
-        }
-        return null;
+        if (key == null) throw new IllegalArgumentException("argument key to get() is null");
+        return root.get(key);
     }
 
     public void put(K key, V value) {
         if (key == null) throw new IllegalArgumentException("argument key to put() is null");
-        Node<K, V> newSplitNode = insert(root, key, value, height);
-        if (newSplitNode == null) return;
-
-        // need to split root
-        Node<K, V> newRootNode = new Node<>(2);
-        newRootNode.subNodes.set(0, new Entry<>(root.subNodes.get(0).key, null, root));
-        if (root.subNodes.get(0).hook)
-            newRootNode.subNodes.get(0).hook = true;
-        newRootNode.subNodes.set(1, new Entry<>(newSplitNode.subNodes.get(0).key, null, newSplitNode));
-        root = newRootNode;
-        height++;
+        root.put(key,value);
     }
 
-    private Node<K, V> insert(Node<K, V> node, K key, V value, int height) {
-        Entry<K, V> newEntry = new Entry<>(key, value, null);
-        int index = Collections.binarySearch(node.subNodes.subList(0, node.size), newEntry);
-        // external node
-        if (height == 0) {
-            if (index >= 0) {
-                node.subNodes.set(index, newEntry);
-                return null;
-            } else
-                index = -index - 1;
-            size++;
-        }
-
-        // internal node
-        else {
-            index = index >= 0 ? index : (-index - 2);
-            Node<K, V> u = insert(node.subNodes.get(index++).child, key, value, height - 1);
-            if (u == null) return null;
-            newEntry.key = u.subNodes.get(0).key;
-            newEntry.child = u;
-        }
-        for (int i = node.size; i > index; i--)
-            node.subNodes.set(i, node.subNodes.get(i - 1));
-        node.subNodes.set(index, newEntry);
-        node.size++;
-        if (node.size < M) return null;
-        else return split(node);
+    public void remove(K key){
+        if (key == null) throw new IllegalArgumentException("argument key to remove() is null");
+        root.remove(key);
     }
 
-    // split node in half
-    private Node<K, V> split(Node<K, V> node) {
-        Node<K, V> newNode = new Node<>(M / 2);
-        node.size = M / 2;
-        for (int j = 0; j < M / 2; j++)
-            newNode.subNodes.set(j, node.subNodes.get(M / 2 + j));
-        return newNode;
+    //TODO
+    ArrayList<V>  getRange(K key1, K key2){
+        return null;
     }
 
-    public String toString() {
-        return toString(root, height, "") + "\n";
+    public String toString(){
+        return toString(root,height,"") + "\n";
     }
 
-    private String toString(Node<K, V> node, int height, String indent) {
+    private String toString(Node node,int height,String indent){
         StringBuilder s = new StringBuilder();
-        ArrayList<Entry<K, V>> children = node.subNodes;
-
-        if (height == 0) {
-            for (int j = 0; j < node.size; j++) {
-                s.append(indent).append(children.get(j).key).append(" ").append(children.get(j).val).append("\n");
+        if(height == 0){
+            LeafNode _node = (LeafNode)node;
+            for(int j = 0;j < node.getSize();j++){
+                s.append(indent).append(_node.keys.get(j)).append(" : ").append(_node.values.get(j)).append("\n");
             }
-        } else {
-            for (int j = 0; j < node.size; j++) {
-                if (j > 0) s.append(indent).append("(").append(children.get(j).key).append(")\n");
-                s.append(toString(children.get(j).child, height - 1, indent + "     "));
+        }else{
+            InternalNode _node = (InternalNode)node;
+            for(int j = 0;j < node.getSize();j++){
+                s.append(toString(_node.children.get(j),height - 1,indent + "   "));
+                s.append(indent).append("(").append(_node.keys.get(j)).append(")\n");
             }
+            s.append(toString(_node.children.get(node.getSize()),height - 1,indent + "   "));
         }
         return s.toString();
+    }
+
+    private abstract class Node {
+
+        ArrayList<K> keys;
+        int nodeSize;
+
+        abstract V get(K key);
+        abstract void put(K key,V value);
+        abstract void remove(K key);
+        abstract K getFirstLeafKey();
+        abstract Node split();
+        abstract void merge(Node sibling);
+
+        int getSize(){
+            return nodeSize;
+        }
+
+        boolean isOverFlow(){
+            return nodeSize > M - 1;
+        }
+
+        boolean isUnderFlow(){
+            return nodeSize < (M + 1) / 2 - 1;
+        }
+
+        int binarySearch(K key){
+            return Collections.binarySearch(keys.subList(0,nodeSize),key);
+        }
+
+        void checkRoot(){
+            if(root.isOverFlow()) {
+                Node newSiblingNode = split();
+                InternalNode newRoot = new InternalNode(1);
+                newRoot.keys.set(0,newSiblingNode.getFirstLeafKey());
+                newRoot.children.set(0,this);
+                newRoot.children.set(1,newSiblingNode);
+                root = newRoot;
+                height++;
+            }
+        }
+
+        void keysAdd(int index,K key){
+            for(int i = nodeSize;i > index;i--){
+                keys.set(i,keys.get(i - 1));
+            }
+            keys.set(index,key);
+            nodeSize++;
+        }
+
+        void keysRemove(int index){
+            for(int i = index;i < nodeSize - 1;i++){
+                keys.set(i,keys.get(i + 1));
+            }
+            nodeSize--;
+        }
+
+    }
+
+    private final class InternalNode extends Node{
+
+        ArrayList<Node> children;
+
+        InternalNode(int size){
+            keys = new ArrayList<K>(Collections.nCopies((int)(1.5*M) + 1,null));
+            children = new ArrayList<Node>((Collections.nCopies((int)(1.5*M) + 2,null)));
+            this.nodeSize = size;
+        }
+
+        void childrenAdd(int index,Node node){
+            for(int i = nodeSize + 1;i > index;i--){
+                children.set(i,children.get(i - 1));
+            }
+            children.set(index,node);
+        }
+
+        void childrenRemove(int index){
+            for(int i = index;i < nodeSize;i++){
+                children.set(i,children.get(i + 1));
+            }
+        }
+
+        @Override
+        V get(K key){
+            return searchChild(key).get(key);
+        }
+
+        @Override
+        void put(K key,V value){
+            Node child = searchChild(key);
+            child.put(key,value);
+            if(child.isOverFlow()){
+                Node newSiblingNode = child.split();
+                insertChild(newSiblingNode.getFirstLeafKey(),newSiblingNode);
+            }
+            checkRoot();
+        }
+
+        @Override
+        void remove(K key){
+            int index = binarySearch(key);
+            int childIndex = index >= 0?index + 1:-index - 1;
+            Node child = children.get(childIndex);
+            child.remove(key);
+            if(child.isUnderFlow()){
+                Node childLeftSibling = getChildLeftSibling(key);
+                Node childRightSibling = getChildRightSibling(key);
+                Node left = childLeftSibling != null ? childLeftSibling : child;
+                Node right = childLeftSibling != null ? child : childRightSibling;
+                left.merge(right);
+                if(index >= 0) {
+                    childrenRemove(index + 1);
+                    keysRemove(index);
+                }else{
+                    deleteChild(right.getFirstLeafKey());
+                }
+                if(left.isOverFlow()){
+                    Node newSiblingNode = left.split();
+                    insertChild(newSiblingNode.getFirstLeafKey(),newSiblingNode);
+                }
+                if(root.getSize() == 0){
+                    root = left;
+                    height--;
+                }
+            }else {
+                if (index >= 0) {
+                    keys.set(index, children.get(index + 1).getFirstLeafKey());
+                }
+            }
+        }
+
+        @Override
+        K getFirstLeafKey(){
+            return children.get(0).getFirstLeafKey();
+        }
+
+        @Override
+        Node split(){
+            int from = getSize() / 2 + 1;
+            int to = getSize();
+            InternalNode newSiblingNode = new InternalNode(to - from);
+            for(int i = 0;i < to - from;i++){
+                newSiblingNode.keys.set(i,keys.get(i + from));
+                newSiblingNode.children.set(i,children.get(i + from));
+            }
+            newSiblingNode.children.set(to-from,children.get(to));
+            this.nodeSize = this.nodeSize - to + from - 1;
+            return newSiblingNode;
+        }
+
+        @Override
+        void merge(Node sibling){
+            int index = getSize();
+            InternalNode node = (InternalNode) sibling;
+            int length = node.getSize();
+            keys.set(index,node.getFirstLeafKey());
+            for(int i = 0;i < length;i++){
+                keys.set(i + index + 1,node.keys.get(i));
+                children.set(i + index + 1,node.children.get(i));
+            }
+            children.set(length + index + 1,node.children.get(length));
+            nodeSize = index + length + 1;
+        }
+
+        Node searchChild(K key){
+            int index = binarySearch(key);
+            return children.get(index >= 0 ? index + 1 : -index - 1);
+        }
+
+        void insertChild(K key,Node child){
+            int index = binarySearch(key);
+            int childIndex = index >= 0 ? index + 1 : -index - 1;
+            if (index >= 0){
+                children.set(childIndex,child);
+            }else{
+                childrenAdd(childIndex + 1,child);
+                keysAdd(childIndex,key);
+            }
+        }
+
+        void deleteChild(K key){
+            int index = binarySearch(key);
+            if(index >= 0){
+                childrenRemove(index + 1);
+                keysRemove(index);
+            }
+        }
+
+        Node getChildLeftSibling(K key){
+            int index = binarySearch(key);
+            int childIndex = index >= 0 ? index + 1 : -index - 1;
+            if(childIndex > 0){
+                return children.get(childIndex - 1);
+            }
+            return null;
+        }
+
+        Node getChildRightSibling(K key){
+            int index = binarySearch(key);
+            int childIndex = index >= 0 ? index + 1 : -index - 1;
+            if(childIndex < getSize()){
+                return children.get(childIndex + 1);
+            }
+            return null;
+        }
+    }
+
+    private final class LeafNode extends Node{
+
+        ArrayList<V> values;
+        LeafNode next;
+
+        LeafNode(int size) {
+            keys = new ArrayList<K>(Collections.nCopies((int)(1.5*M) + 1,null));
+            values = new ArrayList<V>(Collections.nCopies((int)(1.5*M) + 1,null));
+            this.nodeSize = size;
+        }
+
+        void valuesAdd(int index,V value){
+            for(int i = nodeSize;i > index;i--){
+                values.set(i,values.get(i - 1));
+            }
+            values.set(index,value);
+        }
+
+        void valuesRemove(int index){
+            for(int i = index;i < nodeSize - 1;i++){
+                values.set(i,values.get(i + 1));
+            }
+        }
+
+        @Override
+        V get(K key){
+            int index = binarySearch(key);
+            return index >= 0 ? values.get(index) : null;
+        }
+
+        @Override
+        void put(K key,V value){
+            int index =  binarySearch(key);
+            int valueIndex = index >= 0 ? index: - index - 1;
+            if(index >= 0) {
+                values.set(valueIndex,value);
+                //System.out.println("The key already exists!");
+            } else {
+                valuesAdd(valueIndex,value);
+                keysAdd(valueIndex,key);
+                size++;
+            }
+            checkRoot();
+        }
+
+        @Override
+        void remove(K key){
+            int index = binarySearch(key);
+            if(index >= 0){
+                valuesRemove(index);
+                keysRemove(index);
+                size--;
+            }else{
+                //System.out.println("The key doesn't exist!");
+            }
+        }
+
+        @Override
+        K getFirstLeafKey(){
+            return keys.get(0);
+        }
+
+        @Override
+        Node split(){
+            int from = (getSize() + 1) / 2 ;
+            int to = getSize();
+            LeafNode newSiblingNode = new LeafNode(to - from);
+            for(int i = 0;i < to - from;i++){
+                newSiblingNode.keys.set(i,keys.get(i + from));
+                newSiblingNode.values.set(i,values.get(i + from));
+                keys.set(i + from,null);
+                values.set(i + from,null);
+            }
+            nodeSize = from;
+            newSiblingNode.next = next;
+            next = newSiblingNode;
+            return newSiblingNode;
+        }
+
+        @Override
+        void merge(Node sibling){
+            int index = getSize();
+            LeafNode node = (LeafNode)sibling;
+            int length = node.getSize();
+            for(int i = 0;i < length;i++){
+                keys.set(i + index,node.keys.get(i));
+                values.set(i + index,node.values.get(i));
+            }
+            nodeSize = index + length;
+            next = node.next;
+        }
     }
 }
