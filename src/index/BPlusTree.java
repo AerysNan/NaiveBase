@@ -2,7 +2,7 @@ package index;
 import java.util.ArrayList;
 import java.util.Collections;
 
-public class BPlusTree<K extends Comparable<K>, V> {
+public final class BPlusTree<K extends Comparable<K>, V> {
 
     private static final int M = 4;
     private Node root;
@@ -10,7 +10,7 @@ public class BPlusTree<K extends Comparable<K>, V> {
     private int size;
 
     public BPlusTree() {
-        root = new LeafNode();
+        root = new LeafNode(0);
     }
 
     public int size() {
@@ -66,6 +66,7 @@ public class BPlusTree<K extends Comparable<K>, V> {
     private abstract class Node {
 
         ArrayList<K> keys;
+        int nodeSize;
 
         abstract V get(K key);
         abstract void put(K key,V value);
@@ -75,41 +76,71 @@ public class BPlusTree<K extends Comparable<K>, V> {
         abstract void merge(Node sibling);
 
         int getSize(){
-            return keys.size();
+            return nodeSize;
         }
 
         boolean isOverFlow(){
-            return getSize() > M - 1;
+            return nodeSize > M - 1;
         }
 
         boolean isUnderFlow(){
-            return getSize() < (M + 1) / 2 - 1;
+            return nodeSize < (M + 1) / 2 - 1;
         }
 
         int binarySearch(K key){
-            return Collections.binarySearch(keys,key);
+            return Collections.binarySearch(keys.subList(0,nodeSize),key);
         }
 
         void checkRoot(){
             if(root.isOverFlow()) {
                 Node newSiblingNode = split();
-                InternalNode newRoot = new InternalNode();
-                newRoot.keys.add(newSiblingNode.getFirstLeafKey());
-                newRoot.children.add(this);
-                newRoot.children.add(newSiblingNode);
+                InternalNode newRoot = new InternalNode(1);
+                newRoot.keys.set(0,newSiblingNode.getFirstLeafKey());
+                newRoot.children.set(0,this);
+                newRoot.children.set(1,newSiblingNode);
                 root = newRoot;
                 height++;
             }
         }
+
+        void keysAdd(int index,K key){
+            for(int i = nodeSize;i > index;i--){
+                keys.set(i,keys.get(i - 1));
+            }
+            keys.set(index,key);
+            nodeSize++;
+        }
+
+        void keysRemove(int index){
+            for(int i = index;i < nodeSize - 1;i++){
+                keys.set(i,keys.get(i + 1));
+            }
+            nodeSize--;
+        }
+
     }
 
-    private class InternalNode extends Node{
+    private final class InternalNode extends Node{
 
         ArrayList<Node> children;
 
-        InternalNode(){
-            keys = new ArrayList<K>();
-            children = new ArrayList<Node>();
+        InternalNode(int size){
+            keys = new ArrayList<K>(Collections.nCopies(M + 1,null));
+            children = new ArrayList<Node>((Collections.nCopies(M + 2,null)));
+            this.nodeSize = size;
+        }
+
+        void childrenAdd(int index,Node node){
+            for(int i = nodeSize + 1;i > index;i--){
+                children.set(i,children.get(i - 1));
+            }
+            children.set(index,node);
+        }
+
+        void childrenRemove(int index){
+            for(int i = index;i < nodeSize;i++){
+                children.set(i,children.get(i + 1));
+            }
         }
 
         @Override
@@ -159,20 +190,28 @@ public class BPlusTree<K extends Comparable<K>, V> {
         Node split(){
             int from = getSize() / 2 + 1;
             int to = getSize();
-            InternalNode newSiblingNode = new InternalNode();
-            newSiblingNode.keys.addAll(keys.subList(from,to));
-            newSiblingNode.children.addAll(children.subList(from,to + 1));
-            keys.subList(from - 1, to).clear();
-            children.subList(from, to + 1).clear();
+            InternalNode newSiblingNode = new InternalNode(to - from);
+            for(int i = 0;i < to - from;i++){
+                newSiblingNode.keys.set(i,keys.get(i + from));
+                newSiblingNode.children.set(i,children.get(i + from));
+            }
+            newSiblingNode.children.set(to-from,children.get(to));
+            this.nodeSize = this.nodeSize - to + from - 1;
             return newSiblingNode;
         }
 
         @Override
         void merge(Node sibling){
+            int index = getSize();
             InternalNode node = (InternalNode) sibling;
-            keys.add(node.getFirstLeafKey());
-            keys.addAll(node.keys);
-            children.addAll(node.children);
+            int length = node.getSize();
+            keys.set(index,node.getFirstLeafKey());
+            for(int i = 0;i < length;i++){
+                keys.set(i + index + 1,node.keys.get(i));
+                children.set(i + index + 1,node.children.get(i));
+            }
+            children.set(length + index + 1,node.children.get(length));
+            nodeSize = index + length + 1;
         }
 
         Node searchChild(K key){
@@ -186,16 +225,16 @@ public class BPlusTree<K extends Comparable<K>, V> {
             if (index >= 0){
                 children.set(childIndex,child);
             }else{
-                keys.add(childIndex,key);
-                children.add(childIndex + 1,child);
+                childrenAdd(childIndex + 1,child);
+                keysAdd(childIndex,key);
             }
         }
 
         void deleteChild(K key){
             int index = binarySearch(key);
             if(index >= 0){
-                keys.remove(index);
-                children.remove(index + 1);
+                childrenRemove(index + 1);
+                keysRemove(index);
             }
         }
 
@@ -218,14 +257,28 @@ public class BPlusTree<K extends Comparable<K>, V> {
         }
     }
 
-    private class LeafNode extends Node{
+    private final class LeafNode extends Node{
 
         ArrayList<V> values;
         LeafNode next;
 
-        LeafNode() {
-            keys = new ArrayList<K>();
-            values = new ArrayList<V>();
+        LeafNode(int size) {
+            keys = new ArrayList<K>(Collections.nCopies(M + 1,null));
+            values = new ArrayList<V>(Collections.nCopies(M + 1,null));
+            this.nodeSize = size;
+        }
+
+        void valuesAdd(int index,V value){
+            for(int i = nodeSize;i > index;i--){
+                values.set(i,values.get(i - 1));
+            }
+            values.set(index,value);
+        }
+
+        void valuesRemove(int index){
+            for(int i = index;i < nodeSize - 1;i++){
+                values.set(i,values.get(i + 1));
+            }
         }
 
         @Override
@@ -242,8 +295,8 @@ public class BPlusTree<K extends Comparable<K>, V> {
                 values.set(valueIndex,value);
                 //System.out.println("The key already exists!");
             } else {
-                keys.add(valueIndex,key);
-                values.add(valueIndex,value);
+                valuesAdd(valueIndex,value);
+                keysAdd(valueIndex,key);
                 size++;
             }
             checkRoot();
@@ -253,8 +306,8 @@ public class BPlusTree<K extends Comparable<K>, V> {
         void remove(K key){
             int index = binarySearch(key);
             if(index >= 0){
-                keys.remove(index);
-                values.remove(index);
+                valuesRemove(index);
+                keysRemove(index);
                 size--;
             }else{
                 //System.out.println("The key doesn't exist!");
@@ -270,11 +323,12 @@ public class BPlusTree<K extends Comparable<K>, V> {
         Node split(){
             int from = (getSize() + 1) / 2 ;
             int to = getSize();
-            LeafNode newSiblingNode = new LeafNode();
-            newSiblingNode.keys.addAll(keys.subList(from,to));
-            newSiblingNode.values.addAll(values.subList(from,to));
-            keys.subList(from, to).clear();
-            values.subList(from, to).clear();
+            LeafNode newSiblingNode = new LeafNode(to - from);
+            for(int i = 0;i < to - from;i++){
+                newSiblingNode.keys.set(i,keys.get(i + from));
+                newSiblingNode.values.set(i,values.get(i + from));
+            }
+            nodeSize = from;
             newSiblingNode.next = next;
             next = newSiblingNode;
             return newSiblingNode;
@@ -282,9 +336,14 @@ public class BPlusTree<K extends Comparable<K>, V> {
 
         @Override
         void merge(Node sibling){
+            int index = getSize();
             LeafNode node = (LeafNode)sibling;
-            keys.addAll(node.keys);
-            values.addAll(node.values);
+            int length = node.getSize();
+            for(int i = 0;i < length;i++){
+                keys.set(i + index,node.keys.get(i));
+                values.set(i + index,node.values.get(i));
+            }
+            nodeSize = index + length;
             next = node.next;
         }
     }
