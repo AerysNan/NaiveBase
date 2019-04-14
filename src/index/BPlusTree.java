@@ -4,7 +4,7 @@ import java.util.Collections;
 
 public final class BPlusTree<K extends Comparable<K>, V> {
 
-    private static final int M = 4;
+    private static final int M = 5;
     private Node root;
     private int height;
     private int size;
@@ -18,7 +18,7 @@ public final class BPlusTree<K extends Comparable<K>, V> {
     }
 
     public int height() {
-        return height;
+        return root.getSize() == 0?height:height + 1;
     }
 
     public V get(K key) {
@@ -55,8 +55,8 @@ public final class BPlusTree<K extends Comparable<K>, V> {
         }else{
             InternalNode _node = (InternalNode)node;
             for(int j = 0;j < node.getSize();j++){
-                if(j > 0) s.append(indent).append("(").append(_node.keys.get(j)).append(")\n");
                 s.append(toString(_node.children.get(j),height - 1,indent + "   "));
+                s.append(indent).append("(").append(_node.keys.get(j)).append(")\n");
             }
             s.append(toString(_node.children.get(node.getSize()),height - 1,indent + "   "));
         }
@@ -115,6 +115,7 @@ public final class BPlusTree<K extends Comparable<K>, V> {
             for(int i = index;i < nodeSize - 1;i++){
                 keys.set(i,keys.get(i + 1));
             }
+            keys.set(nodeSize - 1,null);
             nodeSize--;
         }
 
@@ -141,6 +142,7 @@ public final class BPlusTree<K extends Comparable<K>, V> {
             for(int i = index;i < nodeSize;i++){
                 children.set(i,children.get(i + 1));
             }
+            children.set(nodeSize,null);
         }
 
         @Override
@@ -161,7 +163,9 @@ public final class BPlusTree<K extends Comparable<K>, V> {
 
         @Override
         void remove(K key){
-            Node child = searchChild(key);
+            int index = binarySearch(key);
+            int childIndex = index >= 0?index + 1:-index - 1;
+            Node child = children.get(childIndex);
             child.remove(key);
             if(child.isUnderFlow()){
                 Node childLeftSibling = getChildLeftSibling(key);
@@ -169,7 +173,12 @@ public final class BPlusTree<K extends Comparable<K>, V> {
                 Node left = childLeftSibling != null ? childLeftSibling : child;
                 Node right = childLeftSibling != null ? child : childRightSibling;
                 left.merge(right);
-                deleteChild(right.getFirstLeafKey());
+                if(index >= 0) {
+                    childrenRemove(index + 1);
+                    keysRemove(index);
+                }else{
+                    deleteChild(right.getFirstLeafKey());
+                }
                 if(left.isOverFlow()){
                     Node newSiblingNode = left.split();
                     insertChild(newSiblingNode.getFirstLeafKey(),newSiblingNode);
@@ -177,6 +186,10 @@ public final class BPlusTree<K extends Comparable<K>, V> {
                 if(root.getSize() == 0){
                     root = left;
                     height--;
+                }
+            }else {
+                if (index >= 0) {
+                    keys.set(index, children.get(index + 1).getFirstLeafKey());
                 }
             }
         }
@@ -279,6 +292,7 @@ public final class BPlusTree<K extends Comparable<K>, V> {
             for(int i = index;i < nodeSize - 1;i++){
                 values.set(i,values.get(i + 1));
             }
+            values.set(nodeSize - 1,null);
         }
 
         @Override
@@ -327,6 +341,8 @@ public final class BPlusTree<K extends Comparable<K>, V> {
             for(int i = 0;i < to - from;i++){
                 newSiblingNode.keys.set(i,keys.get(i + from));
                 newSiblingNode.values.set(i,values.get(i + from));
+                keys.set(i + from,null);
+                values.set(i + from,null);
             }
             nodeSize = from;
             newSiblingNode.next = next;

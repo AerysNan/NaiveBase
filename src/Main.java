@@ -19,6 +19,7 @@ public class Main {
         }
         System.out.println("Size: " + tree.size());
         System.out.println("Height: " + tree.height());
+
         System.out.println(tree.toString());
         for (Integer key : keys) {
             if (!tree.get(key).equals(map.get(key))) {
@@ -27,9 +28,9 @@ public class Main {
         }
 
         //test remove
-        for (int i = 0; i < keys.size(); i++) {
-            tree.remove(i);
-            map.remove(i);
+        for (Integer key:keys) {
+            tree.remove(key);
+            map.remove(key);
             if(tree.size() != map.size()){
                 throw new Exception("error!");
             }
