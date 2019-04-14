@@ -4,7 +4,7 @@ import java.util.Collections;
 
 public final class BPlusTree<K extends Comparable<K>, V> {
 
-    private static final int M = 5;
+    private static final int M = 4;
     private Node root;
     private int height;
     private int size;
@@ -115,7 +115,6 @@ public final class BPlusTree<K extends Comparable<K>, V> {
             for(int i = index;i < nodeSize - 1;i++){
                 keys.set(i,keys.get(i + 1));
             }
-            keys.set(nodeSize - 1,null);
             nodeSize--;
         }
 
@@ -126,8 +125,8 @@ public final class BPlusTree<K extends Comparable<K>, V> {
         ArrayList<Node> children;
 
         InternalNode(int size){
-            keys = new ArrayList<K>(Collections.nCopies(M + 1,null));
-            children = new ArrayList<Node>((Collections.nCopies(M + 2,null)));
+            keys = new ArrayList<K>(Collections.nCopies((int)(1.5*M) + 1,null));
+            children = new ArrayList<Node>((Collections.nCopies((int)(1.5*M) + 2,null)));
             this.nodeSize = size;
         }
 
@@ -142,7 +141,6 @@ public final class BPlusTree<K extends Comparable<K>, V> {
             for(int i = index;i < nodeSize;i++){
                 children.set(i,children.get(i + 1));
             }
-            children.set(nodeSize,null);
         }
 
         @Override
@@ -276,8 +274,8 @@ public final class BPlusTree<K extends Comparable<K>, V> {
         LeafNode next;
 
         LeafNode(int size) {
-            keys = new ArrayList<K>(Collections.nCopies(M + 1,null));
-            values = new ArrayList<V>(Collections.nCopies(M + 1,null));
+            keys = new ArrayList<K>(Collections.nCopies((int)(1.5*M) + 1,null));
+            values = new ArrayList<V>(Collections.nCopies((int)(1.5*M) + 1,null));
             this.nodeSize = size;
         }
 
@@ -292,7 +290,6 @@ public final class BPlusTree<K extends Comparable<K>, V> {
             for(int i = index;i < nodeSize - 1;i++){
                 values.set(i,values.get(i + 1));
             }
-            values.set(nodeSize - 1,null);
         }
 
         @Override
@@ -364,4 +361,3 @@ public final class BPlusTree<K extends Comparable<K>, V> {
         }
     }
 }
-
