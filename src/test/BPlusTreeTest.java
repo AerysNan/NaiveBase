@@ -1,7 +1,10 @@
-package index;
+package test;
 
+import index.BPlusTree;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -9,12 +12,12 @@ import static org.junit.Assert.*;
 
 public class BPlusTreeTest {
 
-    BPlusTree<Integer, String> tree;
-    ArrayList<Integer> keys;
-    HashMap<Integer, String> map;
+    private BPlusTree<Integer, String> tree;
+    private ArrayList<Integer> keys;
+    private HashMap<Integer, String> map;
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         tree = new BPlusTree<>();
         keys = new ArrayList<>();
         map = new HashMap<>();
@@ -23,25 +26,25 @@ public class BPlusTreeTest {
             double random = Math.random();
             int key = (int) (random * size);
             keys.add(key);
-            tree.put(key,String.valueOf(key));
-            map.put(key,String.valueOf(key));
+            tree.put(key, String.valueOf(key));
+            map.put(key, String.valueOf(key));
         }
     }
 
     @Test
     public void put() {
-        for (Integer key:keys) {
-            assertEquals(tree.get(key),map.get(key));
+        for (Integer key : keys) {
+            assertEquals(tree.get(key), map.get(key));
         }
     }
 
     @Test
     public void remove() {
-        for (Integer key:keys) {
+        for (Integer key : keys) {
             tree.remove(key);
             map.remove(key);
-            assertEquals(tree.size(),map.size());
-            assertEquals(tree.get(key),map.get(key));
+            assertEquals(tree.size(), map.size());
+            assertEquals(tree.get(key), map.get(key));
         }
     }
 }
