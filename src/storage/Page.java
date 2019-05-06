@@ -1,36 +1,34 @@
 package storage;
 
-import com.google.gson.Gson;
-import schema.Entry;
 import schema.Row;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 
 public class Page {
     String name;
-    FileWriter fileWriter;
     int size;
-    Gson gson;
+    ArrayList<Row>rows;
 
-    public Page(String name, int id) throws IOException {
-        this.gson = new Gson();
+    public Page(String name, int id){
         this.name = "./data/" + name + "_" + id + ".dat";
-        File file = new File(this.name);
-        if (!file.exists())
-            file.createNewFile();
-        fileWriter = new FileWriter(file);
+        this.rows = new ArrayList<>();
     }
 
-    public int write(Row row) throws IOException {
-        String string = row.toString();
-        size += string.length();
-        fileWriter.write(string + '\n');
+    public int add(Row row){
+        rows.add(row);
+        size += row.toString().length();
         return size;
     }
 
-    public void close() throws IOException {
+    public void persistPage() throws IOException{
+        File file = new File(this.name);
+        FileWriter fileWriter = new FileWriter(file, false);
+        for (Row row : rows) {
+            fileWriter.write(row.toString() + "\n");
+        }
         fileWriter.close();
     }
 }

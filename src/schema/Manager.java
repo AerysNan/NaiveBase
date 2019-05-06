@@ -6,14 +6,31 @@ import java.util.HashMap;
 public class Manager {
     HashMap<String, Database> databases;
     private static final String persistFileName = "databases.dat";
+    private static final String metadataPath = "/data/metadata";
+    private static final String dataPath = "/data";
 
     public Manager() throws IOException {
         this.databases = new HashMap<>();
         recoverDatabases();
+        dirInit();
+    }
+
+    public void dirInit(){
+        File dataPath = new File("./data");
+        if(!dataPath.exists())
+            dataPath.mkdir();
+        File metadataPath = new File("./data/metadata/");
+        if (!metadataPath.exists())
+            metadataPath.mkdirs();
     }
 
     public Database createDatabase(String name) {
-        Database database = new Database(name);
+        Database database = null;
+        try {
+            database = new Database(name);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         databases.put(name, database);
         return database;
     }
@@ -22,7 +39,7 @@ public class Manager {
         if (databases.size() == 0)
             return;
         File file = new File(persistFileName);
-        FileWriter fileWriter = null;
+        FileWriter fileWriter;
         try {
             fileWriter = new FileWriter(file, false);
             for (String name : databases.keySet())
