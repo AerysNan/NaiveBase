@@ -1,7 +1,7 @@
 package exception;
 
 public class TableAlreadyExistsException extends RuntimeException {
-    String name;
+    private String name;
 
     public TableAlreadyExistsException(String name) {
         this.name = name;

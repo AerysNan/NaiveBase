@@ -1,7 +1,7 @@
 package exception;
 
 public class InternalException extends RuntimeException{
-    String message;
+    private String message;
     public InternalException(String message){
         this.message = message;
     }

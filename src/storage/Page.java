@@ -1,36 +1,62 @@
 package storage;
 
-import com.google.gson.Gson;
 import schema.Entry;
-import schema.Row;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.util.ArrayList;
 
 public class Page {
-    String name;
-    FileWriter fileWriter;
-    int size;
-    Gson gson;
 
-    public Page(String name, int id) throws IOException {
-        this.gson = new Gson();
-        this.name = "./data/" + name + "_" + id + ".dat";
-        File file = new File(this.name);
-        if (!file.exists())
-            file.createNewFile();
-        fileWriter = new FileWriter(file);
+    private String path;
+    private int id;
+    private int size;
+    private boolean isDirty;
+    private ArrayList<Entry> primaryEntries;
+
+    public Page(String databaseName, String tableName, int id) {
+        this.path = concatPageName(databaseName, tableName, id);
+        this.primaryEntries = new ArrayList<>();
+        this.id = id;
     }
 
-    public int write(Row row) throws IOException {
-        String string = row.toString();
-        size += string.length();
-        fileWriter.write(string + '\n');
-        return size;
+    public static String concatPageName(String databaseName, String tableName, int id) {
+        return "./data/" + databaseName + "_" + tableName + "_" + id + ".dat";
     }
 
-    public void close() throws IOException {
-        fileWriter.close();
+    public boolean isDirty() {
+        return isDirty;
+    }
+
+    public void setDirty() {
+        isDirty = true;
+    }
+
+    public int getID() {
+        return id;
+    }
+
+    public String getPath() {
+        return path;
+    }
+
+    public ArrayList<Entry> getPrimaryEntries() {
+        return primaryEntries;
+    }
+
+    public int addRow(Entry entry, int size) {
+        primaryEntries.add(entry);
+        this.size += size;
+        return this.size;
+    }
+
+    public int deleteRow(Entry entry, int size) {
+        primaryEntries.remove(entry);
+        this.size -= size;
+        return this.size;
+    }
+
+    public int updateRow(int oldSize, int newSize) {
+        this.size -= oldSize;
+        this.size += newSize;
+        return this.size;
     }
 }
