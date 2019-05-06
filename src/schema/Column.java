@@ -4,8 +4,8 @@ public class Column {
     String name;
     Type type;
     boolean primary;
-    boolean notNull;
-    int maxLength;
+    private boolean notNull;
+    private int maxLength;
 
     public Column(String name, Type type, boolean primary, boolean notNull, int maxLength) {
         this.name = name;
@@ -21,5 +21,9 @@ public class Column {
 
     public void setPrimary(boolean primary) {
         this.primary = primary;
+    }
+
+    public String toString() {
+        return name + ',' + type + ',' + primary + ',' + notNull + ',' + maxLength;
     }
 }

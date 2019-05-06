@@ -1,7 +1,7 @@
 package exception;
 
 public class MultiplePrimaryKeyException extends RuntimeException {
-    String name;
+    private String name;
 
     public MultiplePrimaryKeyException(String name) {
         this.name = name;

@@ -88,7 +88,11 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
 
     @Override
     public String visitQuitStatement(SQLParser.QuitStatementContext ctx) {
-        manager.quit();
+        try {
+            manager.quit();
+        } catch (Exception e) {
+            return e.getMessage();
+        }
         return "Quited.";
     }
 

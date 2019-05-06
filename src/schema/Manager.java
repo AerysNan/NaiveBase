@@ -8,17 +8,18 @@ import exception.NoRemovalAuthorityException;
 import java.io.*;
 import java.util.HashMap;
 
+import static global.Global.*;
+
 public class Manager {
     private HashMap<String, Database> databases;
-    private String adminDatabaseName = "admin";
     private String current;
-    private static final String persistFileName = "databases.dat";
 
-    public Manager() throws IOException {
+    public Manager() {
         this.databases = new HashMap<>();
         recoverDatabases();
         createDatabaseIfNotExists(adminDatabaseName);
         current = adminDatabaseName;
+        dirInit();
     }
 
     private void createDatabaseIfNotExists(String name) {
@@ -40,6 +41,15 @@ public class Manager {
         databases.put(name, database);
     }
 
+    private void dirInit() {
+        File path = new File(dataPath);
+        if (!path.exists())
+            path.mkdir();
+        File mPath = new File(metadataPath);
+        if (!mPath.exists())
+            mPath.mkdirs();
+    }
+
     public void deleteDatabaseIfExist(String name) {
         if (!databases.containsKey(name))
             return;
@@ -54,11 +64,11 @@ public class Manager {
         databases.remove(name);
     }
 
-    public void persistDatabases() {
+    private void persistDatabases() {
         if (databases.size() == 0)
             return;
         File file = new File(persistFileName);
-        FileWriter fileWriter = null;
+        FileWriter fileWriter;
         try {
             fileWriter = new FileWriter(file, false);
             for (String name : databases.keySet())
@@ -90,36 +100,41 @@ public class Manager {
         return sb.toString();
     }
 
-    public void recoverDatabases() throws IOException {
+    private void recoverDatabases() {
         File file = new File(persistFileName);
         if (!file.exists())
             return;
-        FileReader fileReader = new FileReader(file);
-        BufferedReader reader = new BufferedReader(fileReader);
-        String tmpDataBaseName;
-        while ((tmpDataBaseName = reader.readLine()) != null) {
-            Database database = new Database(tmpDataBaseName);
-            databases.put(tmpDataBaseName, database);
+        FileReader fileReader;
+        try {
+            fileReader = new FileReader(file);
+        } catch (IOException e) {
+            throw new InternalException("failed to open database file.");
         }
-        reader.close();
+        BufferedReader reader = new BufferedReader(fileReader);
+        String databaseName;
+        while (true) {
+            try {
+                if ((databaseName = reader.readLine()) == null) break;
+            } catch (IOException e) {
+                throw new InternalException("failed to read from database file.");
+            }
+            Database database = new Database(databaseName);
+            databases.put(databaseName, database);
+        }
+        try {
+            reader.close();
+        } catch (IOException e) {
+            throw new InternalException("failed to close database file reader.");
+        }
     }
 
     public void createTable(String name, Column[] columns) {
-        try {
-            databases.get(current).createTable(name, columns);
-        } catch (IOException e) {
-            throw new InternalException(e.getMessage());
-        }
+        databases.get(current).createTable(name, columns);
     }
 
     public void quit() {
         persistDatabases();
-        for (Database d : databases.values()) {
-            try {
-                d.quit();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
+        for (Database d : databases.values())
+            d.quit();
     }
 }

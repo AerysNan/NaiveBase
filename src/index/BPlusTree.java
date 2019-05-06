@@ -1,14 +1,14 @@
 package index;
 
-import storage.Page;
+import exception.DuplicateKeyException;
+import exception.KeyNotExistException;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 
 public final class BPlusTree<K extends Comparable<K>, V> {
 
-    private static final int M = 4;
+    private static final int M = 128;
     private Node root;
     private int height;
     private int size;
@@ -21,13 +21,14 @@ public final class BPlusTree<K extends Comparable<K>, V> {
         return size;
     }
 
-    public int height() {
-        return root.getSize() == 0 ? height : height + 1;
-    }
-
     public V get(K key) {
         if (key == null) throw new IllegalArgumentException("argument key to get() is null");
         return root.get(key);
+    }
+
+    public void update(K key, V value) {
+        root.remove(key);
+        root.put(key, value);
     }
 
     public void put(K key, V value) {
@@ -40,10 +41,10 @@ public final class BPlusTree<K extends Comparable<K>, V> {
         root.remove(key);
     }
 
-//    TODO
-//    ArrayList<V> getRange(K key1, K key2) {
-//        return null;
-//    }
+    public boolean containsKey(K key) {
+        if (key == null) throw new IllegalArgumentException("argument key to containsKey() is null");
+        return root.containsKey(key);
+    }
 
     public String toString() {
         return toString(root, height, "") + "\n";
@@ -77,6 +78,8 @@ public final class BPlusTree<K extends Comparable<K>, V> {
         abstract void put(K key, V value);
 
         abstract void remove(K key);
+
+        abstract boolean containsKey(K key);
 
         abstract K getFirstLeafKey();
 
@@ -150,6 +153,11 @@ public final class BPlusTree<K extends Comparable<K>, V> {
             for (int i = index; i < nodeSize; i++) {
                 children.set(i, children.get(i + 1));
             }
+        }
+
+        @Override
+        boolean containsKey(K key) {
+            return searchChild(key).containsKey(key);
         }
 
         @Override
@@ -303,19 +311,25 @@ public final class BPlusTree<K extends Comparable<K>, V> {
         }
 
         @Override
+        boolean containsKey(K key) {
+            return binarySearch(key) >= 0;
+        }
+
+        @Override
         V get(K key) {
             int index = binarySearch(key);
-            return index >= 0 ? values.get(index) : null;
+            if (index >= 0)
+                return values.get(index);
+            throw new KeyNotExistException();
         }
 
         @Override
         void put(K key, V value) {
             int index = binarySearch(key);
             int valueIndex = index >= 0 ? index : -index - 1;
-            if (index >= 0) {
-                values.set(valueIndex, value);
-                //System.out.println("The key already exists!");
-            } else {
+            if (index >= 0)
+                throw new DuplicateKeyException();
+            else {
                 valuesAdd(valueIndex, value);
                 keysAdd(valueIndex, key);
                 size++;
@@ -331,7 +345,7 @@ public final class BPlusTree<K extends Comparable<K>, V> {
                 keysRemove(index);
                 size--;
             } else
-                System.out.println("The key doesn't exist!");
+                throw new KeyNotExistException();
         }
 
         @Override

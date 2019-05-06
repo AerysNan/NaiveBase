@@ -4,12 +4,11 @@ import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 import schema.Manager;
-import java.io.IOException;
 
 public class Evaluator {
     private Manager manager;
 
-    public Evaluator() throws IOException {
+    public Evaluator() {
         this.manager = new Manager();
     }
 

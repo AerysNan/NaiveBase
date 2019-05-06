@@ -1,17 +1,30 @@
 package schema;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-public class Row {
-    private ArrayList<Entry> entries;
+public class Row implements Serializable {
 
-    public Row(Entry[] entries) {
-        this.entries = new ArrayList<>(Arrays.asList(entries));
+    private static final long serialVersionUID = -5809782578272943999L;
+    private ArrayList<Entry> entries;
+    private int pageID;
+
+    Row(int pageID) {
+        this.pageID = pageID;
     }
 
-    public void add(Entry e) {
-        entries.add(e);
+    Row(Entry[] entries, int pageID) {
+        this.entries = new ArrayList<>(Arrays.asList(entries));
+        this.pageID = pageID;
+    }
+
+    int getPageID() {
+        return pageID;
+    }
+
+    ArrayList<Entry> getEntries() {
+        return entries;
     }
 
     public String toString() {

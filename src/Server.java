@@ -1,4 +1,5 @@
 import parser.Evaluator;
+import schema.*;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -50,7 +51,7 @@ public class Server {
         Evaluator evaluator = null;
         try {
             evaluator = new Evaluator();
-        } catch (IOException e) {
+        } catch (Exception e) {
             System.err.println("Failed to start evaluator! Error message: " + e.getMessage());
             System.exit(-1);
         }
@@ -63,5 +64,6 @@ public class Server {
             if (result.equals("Quited. "))
                 break;
         }
+
     }
 }
