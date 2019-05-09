@@ -5,9 +5,10 @@ import java.util.HashMap;
 
 public class Database {
     HashMap<String, Table> tables;
-    String currentTable;
+    String name;
 
-    public Database() {
+    public Database(String name) {
+        this.name = name;
         this.tables = new HashMap<>();
     }
 
@@ -20,9 +21,5 @@ public class Database {
     public void quit() throws IOException {
         for (Table t : tables.values())
             t.commit();
-    }
-
-    public void switchTable(String name) {
-        currentTable = name;
     }
 }
