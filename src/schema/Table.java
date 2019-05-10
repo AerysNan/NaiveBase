@@ -5,24 +5,29 @@ import storage.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-public class Table {
+public class Table implements Serializable {
+    private static final long serialVersionUID = -5809782578272943999L;
+    String databaseName;
     String name;
     ArrayList<Column> columns;
-    BPlusTree<Entry, Row> index;
-    BufferPool bufferPool;
+    transient BPlusTree<Entry, Row> index;
+    transient BufferPool bufferPool;
 
     public static final int maxPageNum = 256;
     public static final int maxPageSize = 4096;
 
-    public Table(String name, Column[] columns) throws Exception {
+    public Table(String databaseName, String name, Column[] columns) throws Exception {
+        this.databaseName = databaseName;
         this.name = name;
         this.columns = new ArrayList<>(Arrays.asList(columns));
         this.index = new BPlusTree<>();
-        this.bufferPool = new BufferPool(name);
+        this.bufferPool = new BufferPool(this.databaseName,this.name);
         recoverTable();
+        bufferPool.recoverPageNum();
     }
 
     public void recoverTable() throws Exception {
@@ -35,10 +40,10 @@ public class Table {
             //TODO reduce time complexity
             if (!f.getName().startsWith(name))
                 continue;
-            Page page = BufferPool.DeserializePerson(f.getName());
+            Page page = BufferPool.DeserializePerson(Manager.dataPath + f.getName());
             int pageId = page.getId();
             int size = bufferPool.size();
-            for(Row row:page.getRows()) {
+            for (Row row : page.getRows()) {
                 for (int i = 0; i < columns.size(); i++)
                     if (columns.get(i).primary) {
                         row.getEntries().get(i).setPageId(pageId);
@@ -47,11 +52,10 @@ public class Table {
                     }
             }
             bufferPool.setPageNum(pageId);
-            if(size < maxPageNum) {
+            if (size < maxPageNum) {
                 bufferPool.addPage(page);
             }
         }
-        bufferPool.updatePageNum();
     }
 
 
@@ -70,32 +74,32 @@ public class Table {
         bufferPool.addRow(row);
     }
 
-    public Row get(Entry entry) throws Exception{
+    public Row get(Entry entry) throws Exception {
         //需保证entry 为主键
         Entry intactEntry = index.containsKey(entry);
-        if(intactEntry == null){
-            throw  new IOException("key doesn't exist");
-        }else{
+        if (intactEntry == null) {
+            throw new IOException("key doesn't exist");
+        } else {
             Row ans = index.get(intactEntry);
-            if(ans == null){
+            if (ans == null) {
                 Page oldPage = bufferPool.putLRUPageToDisk();
-                for(Row row:oldPage.getRows()){
+                for (Row row : oldPage.getRows()) {
                     for (int i = 0; i < columns.size(); i++)
                         if (columns.get(i).primary) {
                             index.put(row.getEntries().get(i), null);
                             break;
                         }
-                 }
-                 Page newPage = bufferPool.getPageFromDisk(intactEntry);
-                 for(Row row:newPage.getRows()){
-                     for (int i = 0; i < columns.size(); i++)
-                         if (columns.get(i).primary) {
-                             index.put(row.getEntries().get(i), row);
-                             break;
-                         }
-                 }
-                 return index.get(intactEntry);
-            }else{
+                }
+                Page newPage = bufferPool.getPageFromDisk(intactEntry);
+                for (Row row : newPage.getRows()) {
+                    for (int i = 0; i < columns.size(); i++)
+                        if (columns.get(i).primary) {
+                            index.put(row.getEntries().get(i), row);
+                            break;
+                        }
+                }
+                return index.get(intactEntry);
+            } else {
                 bufferPool.getRow(intactEntry.getPageId());
                 return ans;
             }
@@ -107,7 +111,7 @@ public class Table {
             if (columns.get(i).primary) {
                 Row row = get(entries[i]);
                 index.remove(row.getEntries().get(i));
-                bufferPool.deleteRow(row,row.getEntries().get(i).getPageId());
+                bufferPool.deleteRow(row, row.getEntries().get(i).getPageId());
                 break;
             }
         }
@@ -118,8 +122,8 @@ public class Table {
         for (int i = 0; i < columns.size(); i++) {
             if (columns.get(i).primary) {
                 Row oldRow = get(entries[i]);
-                index.put(oldRow.getEntries().get(i),newRow);
-                bufferPool.updateRow(oldRow,newRow,newRow.getEntries().get(i).getPageId());
+                index.put(oldRow.getEntries().get(i), newRow);
+                bufferPool.updateRow(oldRow, newRow, newRow.getEntries().get(i).getPageId());
                 break;
             }
         }

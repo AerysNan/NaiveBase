@@ -15,9 +15,9 @@ public class Manager {
         dirInit();
     }
 
-    public void dirInit(){
+    public void dirInit() {
         File dataPath = new File(this.dataPath);
-        if(!dataPath.exists())
+        if (!dataPath.exists())
             dataPath.mkdir();
         File metadataPath = new File(this.metadataPath);
         if (!metadataPath.exists())

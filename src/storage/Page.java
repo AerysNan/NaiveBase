@@ -13,13 +13,13 @@ public class Page implements Serializable{
     private transient boolean isDirty;
     private ArrayList<Row> rows;
 
-    public Page(String name, int id){
-        this.name = concatPageName(name,id);
+    public Page(String databaseName, String name, int id){
+        this.name = concatPageName(databaseName, name,id);
         this.rows = new ArrayList<>();
     }
 
-    public static String concatPageName(String name,int id){
-        return "./data/" + name + "_" + id + ".dat";
+    public static String concatPageName(String databaseName, String name,int id){
+        return "./data/" + databaseName + "_" + name + "_" + id + ".dat";
     }
 
     public boolean isDirty() {
@@ -31,7 +31,7 @@ public class Page implements Serializable{
     }
 
     public int getId(){
-        return Integer.parseInt(name.split("_")[1].replace(".dat", ""));
+        return Integer.parseInt(name.split("_")[2].replace(".dat", ""));
     }
 
     public String getName(){

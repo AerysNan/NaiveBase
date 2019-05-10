@@ -10,12 +10,14 @@ import java.util.Map;
 import java.util.Collections;
 
 public class BufferPool {
+    String databaseName;
     String name;
     HashMap<Integer, Page> pages;
     HashMap<Integer, Long> times;
     private int pageNum;
 
-    public BufferPool(String name) {
+    public BufferPool(String databaseName, String name) {
+        this.databaseName = databaseName;
         this.name = name;
         this.pages = new HashMap<>();
         this.times = new HashMap<>();
@@ -29,8 +31,20 @@ public class BufferPool {
         times.put(page.getId(), System.currentTimeMillis());
     }
 
-    public void updatePageNum() throws IOException {
-        Page page = new Page(this.name, ++pageNum);
+    public void recoverPageNum() throws Exception{
+        Page page;
+        if(pages.size() == 0){
+            page = new Page(this.databaseName, this.name,0);
+        }else {
+            page = DeserializePerson(Page.concatPageName(this.databaseName, this.name, pageNum));
+        }
+        page.setDirty();
+        addPage(page);
+    }
+
+    public void updatePageNum() throws IOException{
+        Page page = new Page(this.databaseName, this.name, ++pageNum);
+        page.setDirty();
         addPage(page);
     }
 
@@ -85,7 +99,7 @@ public class BufferPool {
 
     public Page getPageFromDisk(Entry entry) throws Exception {
         int pageId = entry.getPageId();
-        String name = Page.concatPageName(this.name, pageId);
+        String name = Page.concatPageName(this.databaseName, this.name, pageId);
         Page page = DeserializePerson(name);
         pages.put(pageId, page);
         times.put(pageId, System.currentTimeMillis());
@@ -116,5 +130,4 @@ public class BufferPool {
             }
         }
     }
-
 }

@@ -19,7 +19,7 @@ public class Database {
   }
 
   public Table createTable(String name, Column[] columns) throws Exception {
-    Table table = new Table(name, columns);
+    Table table = new Table(this.name, name, columns);
     tables.put(name, table);
     return table;
   }
@@ -87,7 +87,7 @@ public class Database {
     }
     reader.close();
     Column colList[] = colArrayList.toArray(new Column[colArrayList.size()]);
-    Table table = new Table(tableName, colList);
+    Table table = new Table(this.name, tableName, colList);
     tables.put(tableName, table);
   }
 

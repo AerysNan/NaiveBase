@@ -1,6 +1,9 @@
 package schema;
 
-public class Entry implements Comparable<Entry> {
+import java.io.Serializable;
+
+public class Entry implements Comparable<Entry>,Serializable {
+    private static final long serialVersionUID = -5809782578272943999L;
     int id;
     Object value;
     Table table;
@@ -12,11 +15,11 @@ public class Entry implements Comparable<Entry> {
         this.table = table;
     }
 
-    public void setPageId(int index){
+    public void setPageId(int index) {
         this.pageId = index;
     }
 
-    public int getPageId(){
+    public int getPageId() {
         return pageId;
     }
 
