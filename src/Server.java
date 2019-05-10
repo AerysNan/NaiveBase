@@ -1,4 +1,5 @@
 import parser.Evaluator;
+import schema.Manager;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -32,20 +33,23 @@ public class Server {
 
     public static void main(String[] args) {
         try {
-            Server server = new Server(8080);
-            Evaluator evaluator = new Evaluator();
-            while (true) {
-                String message = server.read();
-                System.out.println(message);
-                evaluator.evaluate(message);
-                if (message.equals("quit")) {
-                    server.write("Goodbye!");
-                    break;
-                }
-                server.write("client.Client said: " + message);
-            }
-        } catch (IOException e) {
+//            Server server = new Server(8080);
+//            Evaluator evaluator = new Evaluator();
+//            while (true) {
+//                String message = server.read();
+//                System.out.println(message);
+//                evaluator.evaluate(message);
+//                if (message.equals("quit")) {
+//                    server.write("Goodbye!");
+//                    break;
+//                }
+//                server.write("client.Client said: " + message);
+//            }
+            Manager a = new Manager();
+            a.quit();
+        } catch (Exception e) {
             e.printStackTrace();
         }
+
     }
 }

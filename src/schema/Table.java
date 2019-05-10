@@ -1,11 +1,9 @@
 package schema;
 
-import index.BPlusTree;
-import storage.Page;
+import index.*;
+import storage.*;
 
 import java.io.File;
-import java.io.FileReader;
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -13,70 +11,121 @@ import java.util.Arrays;
 public class Table {
     String name;
     ArrayList<Column> columns;
-    ArrayList<Column> primaryKeys;
     BPlusTree<Entry, Row> index;
-    ArrayList<Page> pages;
+    BufferPool bufferPool;
 
-    private static final int maxPageSize = 4096;
+    public static final int maxPageNum = 256;
+    public static final int maxPageSize = 4096;
 
-    public Table(String name, Column[] columns) throws IOException {
+    public Table(String name, Column[] columns) throws Exception {
         this.name = name;
         this.columns = new ArrayList<>(Arrays.asList(columns));
-        this.primaryKeys = new ArrayList<>();
-        for (Column c : columns)
-            if (c.primary)
-                primaryKeys.add(c);
         this.index = new BPlusTree<>();
-        this.pages = new ArrayList<>();
-        createNewPage();
+        this.bufferPool = new BufferPool(name);
         recoverTable();
     }
 
-    public void recoverTable() throws IOException {
-        File path = new File("./data/");
+    public void recoverTable() throws Exception {
+        File path = new File(Manager.dataPath);
         File[] files = path.listFiles();
-        if (files.length == 1 && files[0].getName() == "metadata/") {
+        if (files.length == 1 && files[0].getName() == "metadata") {
             return;
         }
         for (File f : files) {
             //TODO reduce time complexity
             if (!f.getName().startsWith(name))
                 continue;
-            FileReader fileReader = new FileReader(f);
-            BufferedReader buffer = new BufferedReader(fileReader);
-            String strRow = null;
-            while ((strRow = buffer.readLine()) != null) {
-                Entry entryList[] = parseRow(strRow);
-                Row tmpRow = new Row(entryList);
-                if (addRowToPage(tmpRow) > maxPageSize)
-                    createNewPage();
-                for (int i = 0; i < entryList.length; i++)
-                    if (columns.get(i).primary)
-                        index.put(entryList[i], tmpRow);
+            Page page = BufferPool.DeserializePerson(f.getName());
+            int pageId = page.getId();
+            int size = bufferPool.size();
+            for(Row row:page.getRows()) {
+                for (int i = 0; i < columns.size(); i++)
+                    if (columns.get(i).primary) {
+                        row.getEntries().get(i).setPageId(pageId);
+                        index.put(row.getEntries().get(i), size < maxPageNum ? row : null);
+                        break;
+                    }
+            }
+            bufferPool.setPageNum(pageId);
+            if(size < maxPageNum) {
+                bufferPool.addPage(page);
+            }
+        }
+        bufferPool.updatePageNum();
+    }
+
+
+    public void insert(Entry[] entries) throws Exception {
+        if (entries.length != columns.size())
+            throw new IOException("Column and Entry size error");
+        int pageId = bufferPool.getInsertPageId();
+        Row row = new Row(entries);
+        for (int i = 0; i < entries.length; i++) {
+            if (columns.get(i).primary) {
+                row.getEntries().get(i).setPageId(pageId);
+                index.put(row.getEntries().get(i), row);
+                break;
+            }
+        }
+        bufferPool.addRow(row);
+    }
+
+    public Row get(Entry entry) throws Exception{
+        //需保证entry 为主键
+        Entry intactEntry = index.containsKey(entry);
+        if(intactEntry == null){
+            throw  new IOException("key doesn't exist");
+        }else{
+            Row ans = index.get(intactEntry);
+            if(ans == null){
+                Page oldPage = bufferPool.putLRUPageToDisk();
+                for(Row row:oldPage.getRows()){
+                    for (int i = 0; i < columns.size(); i++)
+                        if (columns.get(i).primary) {
+                            index.put(row.getEntries().get(i), null);
+                            break;
+                        }
+                 }
+                 Page newPage = bufferPool.getPageFromDisk(intactEntry);
+                 for(Row row:newPage.getRows()){
+                     for (int i = 0; i < columns.size(); i++)
+                         if (columns.get(i).primary) {
+                             index.put(row.getEntries().get(i), row);
+                             break;
+                         }
+                 }
+                 return index.get(intactEntry);
+            }else{
+                bufferPool.getRow(intactEntry.getPageId());
+                return ans;
             }
         }
     }
 
-
-    public void insert(Entry[] entries) throws IOException {
-        if (entries.length != columns.size())
-            throw new IOException("Column and Entry size error");
-        Row row = new Row(entries);
-        for (int i = 0; i < entries.length; i++)
-            if (columns.get(i).primary)
-                index.put(entries[i], row);
-        if (addRowToPage(row) > maxPageSize)
-            createNewPage();
+    public void delete(Entry[] entries) throws Exception {
+        for (int i = 0; i < columns.size(); i++) {
+            if (columns.get(i).primary) {
+                Row row = get(entries[i]);
+                index.remove(row.getEntries().get(i));
+                bufferPool.deleteRow(row,row.getEntries().get(i).getPageId());
+                break;
+            }
+        }
     }
 
-    private void createNewPage() throws IOException {
-        Page page = new Page(name, pages.size());
-        pages.add(page);
+    public void update(Entry[] entries) throws Exception {
+        Row newRow = new Row(entries);
+        for (int i = 0; i < columns.size(); i++) {
+            if (columns.get(i).primary) {
+                Row oldRow = get(entries[i]);
+                index.put(oldRow.getEntries().get(i),newRow);
+                bufferPool.updateRow(oldRow,newRow,newRow.getEntries().get(i).getPageId());
+                break;
+            }
+        }
+
     }
 
-    private int addRowToPage(Row row){
-        return pages.get(pages.size()-1).add(row);
-    }
 
     public int compareEntries(Entry e1, Entry e2) {
         assert e1.id == e2.id;
@@ -96,35 +145,8 @@ public class Table {
         return 0;
     }
 
-    public Entry[] parseRow(String strRow){
-        String[] strEntryList = strRow.split(",");
-        ArrayList<Entry> entryArrayList = new ArrayList<>();
-        for (int i = 0; i < strEntryList.length; i++) {
-            switch (columns.get(i).type) {
-                case INT:
-                    entryArrayList.add(new Entry(i, Integer.parseInt(strEntryList[i]), this));
-                    break;
-                case LONG:
-                    entryArrayList.add(new Entry(i, Long.parseLong(strEntryList[i]), this));
-                    break;
-                case FLOAT:
-                    entryArrayList.add(new Entry(i, Float.parseFloat(strEntryList[i]), this));
-                    break;
-                case DOUBLE:
-                    entryArrayList.add(new Entry(i, Double.parseDouble(strEntryList[i]), this));
-                    break;
-                case STRING:
-                    entryArrayList.add(new Entry(i, strEntryList[i], this));
-                    break;
-            }
-        }
-        return entryArrayList.toArray(new Entry[entryArrayList.size()]);
-    }
-
 
     public void commit() throws IOException {
-        for(Page page:pages){
-            page.persistPage();
-        }
+        bufferPool.commit();
     }
 }

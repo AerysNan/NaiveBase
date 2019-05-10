@@ -103,8 +103,8 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     }
 
     @Override
-    public Object visitCreate_db_stmt(SQLParser.Create_db_stmtContext ctx) {
-        manager.createDatabase(ctx.database_name().getText());
+    public Object visitCreate_db_stmt(SQLParser.Create_db_stmtContext ctx){
+        //manager.createDatabase(ctx.database_name().getText());
         return null;
     }
 

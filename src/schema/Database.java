@@ -12,20 +12,20 @@ public class Database {
   String name;
   HashMap<String, Table> tables;
 
-  public Database(String name) throws IOException {
+  public Database(String name) throws Exception {
     this.name = name;
     this.tables = new HashMap<>();
     recoverDatabase();
   }
 
-  public Table createTable(String name, Column[] columns) throws IOException {
+  public Table createTable(String name, Column[] columns) throws Exception {
     Table table = new Table(name, columns);
     tables.put(name, table);
     return table;
   }
 
   public void persistDatabase() throws IOException {
-    File path = new File("./data/metadata/");
+    File path = new File(Manager.metadataPath);
     if (!path.exists()) {
       return;
     }
@@ -35,15 +35,15 @@ public class Database {
   }
 
   public void persistTable(Table table) throws IOException {
-    File file = new File("./data/metadata/" + this.name + "_" + table.name + ".dat");
+    File file = new File(Manager.metadataPath + this.name + "_" + table.name + ".dat");
     FileWriter fileWriter = new FileWriter(file, false);
     for (Column c : table.columns)
       fileWriter.write(c.toString() + "\n");
     fileWriter.close();
   }
 
-  public void recoverDatabase() throws IOException {
-    File path = new File("./data/metadata/");
+  public void recoverDatabase() throws Exception {
+    File path = new File(Manager.metadataPath);
     if (!path.exists()) {
       return;
     }
@@ -56,7 +56,7 @@ public class Database {
     }
   }
 
-  public void recoverTable(File f) throws IOException {
+  public void recoverTable(File f) throws Exception {
     FileReader fileReader = new FileReader(f);
     BufferedReader reader = new BufferedReader(fileReader);
     String tableName = f.getName().split("_")[1].replace(".dat", "");

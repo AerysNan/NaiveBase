@@ -10,7 +10,7 @@ import java.io.IOException;
 public class Evaluator {
     private Manager manager;
 
-    public Evaluator() throws IOException {
+    public Evaluator() throws Exception {
         this.manager = new Manager();
     }
 

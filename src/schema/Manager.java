@@ -6,25 +6,25 @@ import java.util.HashMap;
 public class Manager {
     HashMap<String, Database> databases;
     private static final String persistFileName = "databases.dat";
-    private static final String metadataPath = "/data/metadata";
-    private static final String dataPath = "/data";
+    static final String metadataPath = "./data/metadata/";
+    static final String dataPath = "./data/";
 
-    public Manager() throws IOException {
+    public Manager() throws Exception {
         this.databases = new HashMap<>();
         recoverDatabases();
         dirInit();
     }
 
     public void dirInit(){
-        File dataPath = new File("./data");
+        File dataPath = new File(this.dataPath);
         if(!dataPath.exists())
             dataPath.mkdir();
-        File metadataPath = new File("./data/metadata/");
+        File metadataPath = new File(this.metadataPath);
         if (!metadataPath.exists())
             metadataPath.mkdirs();
     }
 
-    public Database createDatabase(String name) {
+    public Database createDatabase(String name) throws Exception {
         Database database = null;
         try {
             database = new Database(name);
@@ -38,7 +38,7 @@ public class Manager {
     public void persistDatabases() {
         if (databases.size() == 0)
             return;
-        File file = new File(persistFileName);
+        File file = new File(this.persistFileName);
         FileWriter fileWriter;
         try {
             fileWriter = new FileWriter(file, false);
@@ -51,8 +51,8 @@ public class Manager {
 
     }
 
-    public void recoverDatabases() throws IOException {
-        File file = new File(persistFileName);
+    public void recoverDatabases() throws Exception {
+        File file = new File(this.persistFileName);
         if (!file.exists())
             return;
         FileReader fileReader = new FileReader(file);

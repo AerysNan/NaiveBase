@@ -40,6 +40,11 @@ public final class BPlusTree<K extends Comparable<K>, V> {
         root.remove(key);
     }
 
+    public K containsKey(K key) {
+        if (key == null) throw new IllegalArgumentException("argument key to containsKey() is null");
+        return root.containsKey(key);
+    }
+
 //    TODO
 //    ArrayList<V> getRange(K key1, K key2) {
 //        return null;
@@ -77,6 +82,8 @@ public final class BPlusTree<K extends Comparable<K>, V> {
         abstract void put(K key, V value);
 
         abstract void remove(K key);
+
+        abstract K containsKey(K key);
 
         abstract K getFirstLeafKey();
 
@@ -150,6 +157,11 @@ public final class BPlusTree<K extends Comparable<K>, V> {
             for (int i = index; i < nodeSize; i++) {
                 children.set(i, children.get(i + 1));
             }
+        }
+
+        @Override
+        K containsKey(K key) {
+            return searchChild(key).containsKey(key);
         }
 
         @Override
@@ -299,6 +311,16 @@ public final class BPlusTree<K extends Comparable<K>, V> {
         void valuesRemove(int index) {
             for (int i = index; i < nodeSize - 1; i++) {
                 values.set(i, values.get(i + 1));
+            }
+        }
+
+        @Override
+        K containsKey(K key) {
+            int index = binarySearch(key);
+            if (index >= 0) {
+                return keys.get(index);
+            } else {
+                return null;
             }
         }
 

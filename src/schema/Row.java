@@ -14,6 +14,11 @@ public class Row {
         entries.add(e);
     }
 
+    public ArrayList<Entry> getEntries() {
+        return entries;
+    }
+
+
     public String toString() {
         StringBuilder sb = new StringBuilder();
         for (Entry e : entries)
