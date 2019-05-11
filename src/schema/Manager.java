@@ -5,14 +5,21 @@ import java.util.HashMap;
 
 public class Manager {
     HashMap<String, Database> databases;
-    private static final String persistFileName = "databases.dat";
-    static final String metadataPath = "./data/metadata/";
-    static final String dataPath = "./data/";
+    public static final String persistFileName = "databases.dat";
+    public static final String metadataPath = "./data/metadata/";
+    public static final String dataPath = "./data/";
+    public static int maxPageNum = 256;
+    public static int maxPageSize = 4096;
 
     public Manager() throws Exception {
         this.databases = new HashMap<>();
         recoverDatabases();
         dirInit();
+    }
+
+    public void setPageAttr(int num,int size){
+        this.maxPageNum = num;
+        this.maxPageSize = size;
     }
 
     public void dirInit() {
@@ -63,6 +70,10 @@ public class Manager {
             databases.put(tmpDataBaseName, database);
         }
         reader.close();
+    }
+
+    public Database useDatabase(String name){
+        return databases.get(name);
     }
 
     public void quit() {

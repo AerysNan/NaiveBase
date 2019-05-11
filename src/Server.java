@@ -33,45 +33,18 @@ public class Server {
 
     public static void main(String[] args) {
         try {
-//            Server server = new Server(8080);
-//            Evaluator evaluator = new Evaluator();
-//            while (true) {
-//                String message = server.read();
-//                System.out.println(message);
-//                evaluator.evaluate(message);
-//                if (message.equals("quit")) {
-//                    server.write("Goodbye!");
-//                    break;
-//                }
-//                server.write("client.Client said: " + message);
-//            }
-            Manager db = new Manager();
-//            Column col1 = new Column("id", Type.INT, true);
-//            Column col2 = new Column("name", Type.STRING, false);
-//            Column col3 = new Column("score", Type.DOUBLE, false);
-//            Column[] columns = new Column[]{col1, col2, col3};
-//            Database txy = db.createDatabase("txy");
-//            Database ny = db.createDatabase("ny");
-//            Table table = txy.createTable("grade", columns);
-//            Entry[] e1 = new Entry[]{
-//                    new Entry(0, 1, table),
-//                    new Entry(1, "A", table),
-//                    new Entry(2, 47.56, table)
-//            };
-//            Entry[] e2 = new Entry[]{
-//                    new Entry(0, 2, table),
-//                    new Entry(1, "B", table),
-//                    new Entry(2, 56.43, table)
-//            };
-//            Entry[] e3 = new Entry[]{
-//                    new Entry(0, 3, table),
-//                    new Entry(1, "C", table),
-//                    new Entry(2, 76.51, table)
-//            };
-//            table.insert(e1);
-//            table.insert(e2);
-//            table.insert(e3);
-            db.quit();
+            Server server = new Server(8080);
+            Evaluator evaluator = new Evaluator();
+            while (true) {
+                String message = server.read();
+                System.out.println(message);
+                evaluator.evaluate(message);
+                if (message.equals("quit")) {
+                    server.write("Goodbye!");
+                    break;
+                }
+                server.write("client.Client said: " + message);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }

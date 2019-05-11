@@ -8,7 +8,7 @@ import java.util.Collections;
 
 public final class BPlusTree<K extends Comparable<K>, V> {
 
-    private static final int M = 4;
+    private static final int M = 128;
     private Node root;
     private int height;
     private int size;
@@ -352,8 +352,9 @@ public final class BPlusTree<K extends Comparable<K>, V> {
                 valuesRemove(index);
                 keysRemove(index);
                 size--;
-            } else
-                System.out.println("The key doesn't exist!");
+            } else {
+                //System.out.println("The key doesn't exist!");
+            }
         }
 
         @Override

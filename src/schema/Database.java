@@ -9,17 +9,17 @@ import java.io.FileReader;
 import java.io.BufferedReader;
 
 public class Database {
-  String name;
+  String dataBaseName;
   HashMap<String, Table> tables;
 
   public Database(String name) throws Exception {
-    this.name = name;
+    this.dataBaseName = name;
     this.tables = new HashMap<>();
     recoverDatabase();
   }
 
   public Table createTable(String name, Column[] columns) throws Exception {
-    Table table = new Table(this.name, name, columns);
+    Table table = new Table(this.dataBaseName, name, columns);
     tables.put(name, table);
     return table;
   }
@@ -35,7 +35,7 @@ public class Database {
   }
 
   public void persistTableColumn(Table table) throws IOException {
-    File file = new File(Manager.metadataPath + this.name + "_" + table.name + ".dat");
+    File file = new File(Manager.metadataPath + this.dataBaseName + "_" + table.tableName + ".dat");
     FileWriter fileWriter = new FileWriter(file, false);
     for (Column c : table.columns)
       fileWriter.write(c.toString() + "\n");
@@ -49,8 +49,7 @@ public class Database {
     }
     File[] files = path.listFiles();
     for (File f : files) {
-      // TODO reduce time complexity
-      if (!f.getName().startsWith(this.name))
+      if (!f.getName().startsWith(this.dataBaseName))
         continue;
       recoverTableColumn(f);
     }
@@ -87,9 +86,14 @@ public class Database {
     }
     reader.close();
     Column colList[] = colArrayList.toArray(new Column[colArrayList.size()]);
-    Table table = new Table(this.name, tableName, colList);
+    Table table = new Table(this.dataBaseName, tableName, colList);
     tables.put(tableName, table);
   }
+
+  public Table useTable(String name){
+    return tables.get(name);
+  }
+
 
   public void quit() throws IOException {
     persistDatabase();

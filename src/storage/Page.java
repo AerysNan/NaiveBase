@@ -1,61 +1,60 @@
 package storage;
 
-import schema.Row;
+import schema.Entry;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 
-public class Page implements Serializable{
+public class Page {
 
-    private static final long serialVersionUID = -5809782578272943999L;
-    private String name;
+    private String path;
     private int size;
-    private transient boolean isDirty;
-    private ArrayList<Row> rows;
+    private boolean isDirty;
+    private ArrayList<Entry> primaryEntries;
 
-    public Page(String databaseName, String name, int id){
-        this.name = concatPageName(databaseName, name,id);
-        this.rows = new ArrayList<>();
+    public Page(String databaseName, String tableName, int id) {
+        this.path = concatPageName(databaseName, tableName, id);
+        this.primaryEntries = new ArrayList<>();
     }
 
-    public static String concatPageName(String databaseName, String name,int id){
-        return "./data/" + databaseName + "_" + name + "_" + id + ".dat";
+    public static String concatPageName(String databaseName, String tableName, int id) {
+        return "./data/" + databaseName + "_" + tableName + "_" + id + ".dat";
     }
 
     public boolean isDirty() {
         return isDirty;
     }
 
-    public void setDirty(){
+    public void setDirty() {
         isDirty = true;
     }
 
-    public int getId(){
-        return Integer.parseInt(name.split("_")[2].replace(".dat", ""));
+    public int getId() {
+        return Integer.parseInt(path.split("_")[2].replace(".dat", ""));
     }
 
-    public String getName(){
-        return name;
+    public String getPath() {
+        return path;
     }
 
-    public ArrayList<Row> getRows(){
-        return rows;
+    public ArrayList<Entry> getPrimaryEntries() {
+        return primaryEntries;
     }
 
-    public int add(Row row){
-        rows.add(row);
-        size += row.toString().length();
-        return size;
+    public int addRow(Entry entry, int size) {
+        primaryEntries.add(entry);
+        this.size += size;
+        return this.size;
     }
 
-    public void remove(Row row){
-        rows.remove(row);
-        setDirty();
+    public int deleteRow(Entry entry, int size) {
+        primaryEntries.remove(entry);
+        this.size -= size;
+        return this.size;
     }
 
-    public void update(Row oldRow,Row newRow){
-        rows.remove(oldRow);
-        rows.add(newRow);
+    public int updateRow(Entry entry, int oldSize, int newSize) {
+        this.size -= oldSize;
+        this.size += newSize;
+        return this.size;
     }
-
 }

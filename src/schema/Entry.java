@@ -7,7 +7,7 @@ public class Entry implements Comparable<Entry>,Serializable {
     private static final long serialVersionUID = -5809782578272943999L;
     int id;
     Object value;
-    Table table;
+    transient Table table;
     int pageId;
 
     public Entry(int id, Object value, Table table) {
@@ -22,6 +22,10 @@ public class Entry implements Comparable<Entry>,Serializable {
 
     public int getPageId() {
         return pageId;
+    }
+
+    public void setTable(Table table) {
+        this.table = table;
     }
 
     @Override
