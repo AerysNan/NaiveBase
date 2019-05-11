@@ -19,31 +19,43 @@ public class Client {
         System.out.println("Successfully connected to server!");
     }
 
-    private String read() throws IOException {
-        return reader.readLine();
+    private String read() {
+        try {
+            return reader.readLine();
+        } catch (IOException e) {
+            System.err.println("Failed to read from socket! Error message: " + e.getMessage());
+            return "";
+        }
     }
 
-    private void write(String message) throws IOException {
-        writer.write(message);
-        writer.newLine();
-        writer.flush();
+    private void write(String message) {
+        try {
+            writer.write(message);
+            writer.newLine();
+            writer.flush();
+        } catch (IOException e) {
+            System.err.println("Failed to write to socket! Error message: " + e.getMessage());
+        }
     }
 
     public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        Client client = null;
         try {
-            Scanner sc = new Scanner(System.in);
-            Client client = new Client("localhost", 8080);
-            while (true) {
-                System.out.print(">");
-                String message = sc.nextLine();
-                client.write(message);
-                String response = client.read();
-                System.out.println(response);
-                if (response.equals("Goodbye!"))
-                    break;
-            }
+            client = new Client("localhost", 8080);
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("Failed to start client! Error message: " + e.getMessage());
+            System.exit(-1);
+        }
+        while (true) {
+            System.out.print(">");
+            String message = sc.nextLine();
+            client.write(message);
+            String response = client.read();
+            if (!response.equals(""))
+                System.out.println(response);
+            if (response.equals("Quited. \n"))
+                break;
         }
     }
 }
