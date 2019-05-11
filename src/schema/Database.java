@@ -30,11 +30,11 @@ public class Database {
       return;
     }
     for (Table t : tables.values()) {
-      persistTable(t);
+      persistTableColumn(t);
     }
   }
 
-  public void persistTable(Table table) throws IOException {
+  public void persistTableColumn(Table table) throws IOException {
     File file = new File(Manager.metadataPath + this.name + "_" + table.name + ".dat");
     FileWriter fileWriter = new FileWriter(file, false);
     for (Column c : table.columns)
@@ -52,11 +52,11 @@ public class Database {
       // TODO reduce time complexity
       if (!f.getName().startsWith(this.name))
         continue;
-      recoverTable(f);
+      recoverTableColumn(f);
     }
   }
 
-  public void recoverTable(File f) throws Exception {
+  public void recoverTableColumn(File f) throws Exception {
     FileReader fileReader = new FileReader(f);
     BufferedReader reader = new BufferedReader(fileReader);
     String tableName = f.getName().split("_")[1].replace(".dat", "");
@@ -94,6 +94,10 @@ public class Database {
   public void quit() throws IOException {
     persistDatabase();
     for (Table t : tables.values())
-      t.commit();
+      try {
+        t.commit();
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
   }
 }

@@ -33,19 +33,19 @@ public class Server {
 
     public static void main(String[] args) {
         try {
-            Server server = new Server(8080);
-            Evaluator evaluator = new Evaluator();
-            while (true) {
-                String message = server.read();
-                System.out.println(message);
-                evaluator.evaluate(message);
-                if (message.equals("quit")) {
-                    server.write("Goodbye!");
-                    break;
-                }
-                server.write("client.Client said: " + message);
-            }
-//            Manager db = new Manager();
+//            Server server = new Server(8080);
+//            Evaluator evaluator = new Evaluator();
+//            while (true) {
+//                String message = server.read();
+//                System.out.println(message);
+//                evaluator.evaluate(message);
+//                if (message.equals("quit")) {
+//                    server.write("Goodbye!");
+//                    break;
+//                }
+//                server.write("client.Client said: " + message);
+//            }
+            Manager db = new Manager();
 //            Column col1 = new Column("id", Type.INT, true);
 //            Column col2 = new Column("name", Type.STRING, false);
 //            Column col3 = new Column("score", Type.DOUBLE, false);
@@ -71,7 +71,7 @@ public class Server {
 //            table.insert(e1);
 //            table.insert(e2);
 //            table.insert(e3);
-//            db.quit();
+            db.quit();
         } catch (Exception e) {
             e.printStackTrace();
         }

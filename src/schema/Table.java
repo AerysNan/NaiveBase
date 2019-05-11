@@ -25,7 +25,7 @@ public class Table implements Serializable {
         this.name = name;
         this.columns = new ArrayList<>(Arrays.asList(columns));
         this.index = new BPlusTree<>();
-        this.bufferPool = new BufferPool(this.databaseName,this.name);
+        this.bufferPool = new BufferPool(this.databaseName, this.name);
         recoverTable();
         bufferPool.recoverPageNum();
     }
@@ -38,7 +38,7 @@ public class Table implements Serializable {
         }
         for (File f : files) {
             //TODO reduce time complexity
-            if (!f.getName().startsWith(name))
+            if (!f.getName().startsWith(databaseName + "_" + name))
                 continue;
             Page page = BufferPool.DeserializePerson(Manager.dataPath + f.getName());
             int pageId = page.getId();

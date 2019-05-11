@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 public class Row implements Serializable {
+
     private static final long serialVersionUID = -5809782578272943999L;
     private ArrayList<Entry> entries;
 
@@ -19,7 +20,6 @@ public class Row implements Serializable {
     public ArrayList<Entry> getEntries() {
         return entries;
     }
-
 
     public String toString() {
         StringBuilder sb = new StringBuilder();
