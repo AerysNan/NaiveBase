@@ -28,7 +28,7 @@ create_db_stmt :
     K_CREATE K_DATABASE database_name ;
 
 drop_db_stmt :
-    K_DROP K_DATABASE database_name ;
+    K_DROP K_DATABASE ( K_IF K_EXISTS )? database_name ;
 
 create_table_stmt :
     K_CREATE K_TABLE table_name

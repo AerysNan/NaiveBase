@@ -20,32 +20,48 @@ public class Server {
         System.out.println("Connection built successfully!");
     }
 
-    private String read() throws IOException {
-        return reader.readLine();
+    private String read() {
+        try {
+            return reader.readLine();
+        } catch (IOException e) {
+            System.err.println("Failed to read from socket! Error message: " + e.getMessage());
+            return "";
+        }
     }
 
-    private void write(String message) throws IOException {
-        writer.write(message);
-        writer.newLine();
-        writer.flush();
+    private void write(String message) {
+        try {
+            writer.write(message);
+            writer.newLine();
+            writer.flush();
+        } catch (IOException e) {
+            System.err.println("Failed to write to socket! Error message: " + e.getMessage());
+        }
     }
 
     public static void main(String[] args) {
+        Server server = null;
         try {
-            Server server = new Server(8080);
-            Evaluator evaluator = new Evaluator();
-            while (true) {
-                String message = server.read();
-                System.out.println(message);
-                evaluator.evaluate(message);
-                if (message.equals("quit")) {
-                    server.write("Goodbye!");
-                    break;
-                }
-                server.write("client.Client said: " + message);
-            }
+            server = new Server(8080);
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("Failed to start server! Error message: " + e.getMessage());
+            System.exit(-1);
+        }
+        Evaluator evaluator = null;
+        try {
+            evaluator = new Evaluator();
+        } catch (IOException e) {
+            System.err.println("Failed to start evaluator! Error message: " + e.getMessage());
+            System.exit(-1);
+        }
+        while (true) {
+            String message = server.read();
+            if (!message.equals(""))
+                System.out.println(message);
+            String result = evaluator.evaluate(message);
+            server.write(result);
+            if (result.equals("Quited. \n"))
+                break;
         }
     }
 }

@@ -3,3 +3,6 @@
 /out
 *.iml
 *.dat
+SQL*
+!SQL.g4
+!SQLCustomVisitor.java

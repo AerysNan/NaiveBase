@@ -1,7 +1,6 @@
 package parser;
 
 import org.antlr.v4.runtime.tree.ErrorNode;
-import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.RuleNode;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import schema.Manager;
@@ -15,40 +14,34 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     }
 
     @Override
-    public Object visitParse(SQLParser.ParseContext ctx) {
-        if(ctx.sql_stmt_list() != null)
-            visit(ctx.sql_stmt_list());
+    public String visitParse(SQLParser.ParseContext ctx) {
+        if (ctx.sql_stmt_list() != null)
+            return String.valueOf(visit(ctx.sql_stmt_list()));
         else
-            visit(ctx.error());
+            return String.valueOf(visit(ctx.error()));
+    }
+
+    @Override
+    public String visitSql_stmt_list(SQLParser.Sql_stmt_listContext ctx) {
+        StringBuilder sb = new StringBuilder();
+        for (SQLParser.Sql_stmtContext subCtx : ctx.sql_stmt())
+            sb.append(visit(subCtx)).append(' ');
+        return sb.toString();
+    }
+
+    @Override
+    public String visitCreateTableStatement(SQLParser.CreateTableStatementContext ctx) {
         return null;
     }
 
     @Override
-    public Object visitError(SQLParser.ErrorContext ctx) {
-        return null;
+    public String visitCreateDatabaseStatement(SQLParser.CreateDatabaseStatementContext ctx) {
+        return String.valueOf(visit(ctx.create_db_stmt()));
     }
 
     @Override
-    public Object visitSql_stmt_list(SQLParser.Sql_stmt_listContext ctx) {
-        for(SQLParser.Sql_stmtContext subCtx : ctx.sql_stmt())
-            visit(subCtx);
-        return null;
-    }
-
-    @Override
-    public Object visitCreateTableStatement(SQLParser.CreateTableStatementContext ctx) {
-        return null;
-    }
-
-    @Override
-    public Object visitCreateDatabaseStatement(SQLParser.CreateDatabaseStatementContext ctx) {
-        visit(ctx.create_db_stmt());
-        return null;
-    }
-
-    @Override
-    public Object visitDropDatabaseStatement(SQLParser.DropDatabaseStatementContext ctx) {
-        return null;
+    public String visitDropDatabaseStatement(SQLParser.DropDatabaseStatementContext ctx) {
+        return String.valueOf(visit(ctx.drop_db_stmt()));
     }
 
     @Override
@@ -77,13 +70,13 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     }
 
     @Override
-    public Object visitUseStatement(SQLParser.UseStatementContext ctx) {
-        return null;
+    public String visitUseStatement(SQLParser.UseStatementContext ctx) {
+        return String.valueOf(visit(ctx.use_db_stmt()));
     }
 
     @Override
-    public Object visitShowDatabaseStatement(SQLParser.ShowDatabaseStatementContext ctx) {
-        return null;
+    public String visitShowDatabaseStatement(SQLParser.ShowDatabaseStatementContext ctx) {
+        return manager.showDatabases();
     }
 
     @Override
@@ -92,9 +85,9 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     }
 
     @Override
-    public Object visitQuitStatement(SQLParser.QuitStatementContext ctx) {
+    public String visitQuitStatement(SQLParser.QuitStatementContext ctx) {
         manager.quit();
-        return null;
+        return "Quited.";
     }
 
     @Override
@@ -104,13 +97,27 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
 
     @Override
     public Object visitCreate_db_stmt(SQLParser.Create_db_stmtContext ctx) {
-        manager.createDatabase(ctx.database_name().getText());
-        return null;
+        String name = ctx.database_name().getText();
+        try {
+            manager.createDatabase(name);
+        } catch (RuntimeException e) {
+            return e.getMessage();
+        }
+        return "Created database " + name + ".";
     }
 
     @Override
     public Object visitDrop_db_stmt(SQLParser.Drop_db_stmtContext ctx) {
-        return null;
+        String name = ctx.database_name().getText();
+        try {
+            if (ctx.K_IF() != null && ctx.K_EXISTS() != null)
+                manager.deleteDatabaseIfExist(ctx.database_name().getText());
+            else
+                manager.deleteDatabase(ctx.database_name().getText());
+        } catch (RuntimeException e) {
+            return e.getMessage();
+        }
+        return "Dropped database " + name + ".";
     }
 
     @Override
@@ -119,8 +126,14 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     }
 
     @Override
-    public Object visitUse_db_stmt(SQLParser.Use_db_stmtContext ctx) {
-        return null;
+    public String visitUse_db_stmt(SQLParser.Use_db_stmtContext ctx) {
+        String name = ctx.database_name().getText();
+        try {
+            manager.switchDatabase(ctx.database_name().getText());
+        } catch (RuntimeException e) {
+            return e.getMessage();
+        }
+        return "Switched to database " + name + ".";
     }
 
     @Override
