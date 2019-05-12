@@ -1,10 +1,7 @@
 grammar SQL;
 
 parse :
-    ( sql_stmt_list | error ) ;
-
-error :
-    UNEXPECTED_CHAR { throw new RuntimeException("UNEXPECTED_CHAR=" + $UNEXPECTED_CHAR.text); } ;
+    sql_stmt_list ;
 
 sql_stmt_list :
     ';'* sql_stmt ( ';'+ sql_stmt )* ';'* ;
@@ -188,9 +185,6 @@ MULTILINE_COMMENT :
 
 SPACES :
     [ \u000B\t\r\n] -> channel(HIDDEN) ;
-
-UNEXPECTED_CHAR :
-    . ;
 
 fragment DIGIT : [0-9] ;
 fragment A : [aA] ;

@@ -1,9 +1,13 @@
 package parser;
 
+import javafx.util.Pair;
 import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.RuleNode;
 import org.antlr.v4.runtime.tree.TerminalNode;
+import schema.Column;
+import schema.Constraint;
 import schema.Manager;
+import schema.Type;
 
 public class SQLCustomVisitor extends SQLBaseVisitor {
     private Manager manager;
@@ -15,14 +19,12 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
 
     @Override
     public String visitParse(SQLParser.ParseContext ctx) {
-        if (ctx.sql_stmt_list() != null)
-            return String.valueOf(visit(ctx.sql_stmt_list()));
-        else
-            return String.valueOf(visit(ctx.error()));
+        return String.valueOf(visit(ctx.sql_stmt_list()));
     }
 
     @Override
     public String visitSql_stmt_list(SQLParser.Sql_stmt_listContext ctx) {
+        //TODO: return string can only be one line, must fix.
         StringBuilder sb = new StringBuilder();
         for (SQLParser.Sql_stmtContext subCtx : ctx.sql_stmt())
             sb.append(visit(subCtx)).append(' ');
@@ -31,7 +33,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
 
     @Override
     public String visitCreateTableStatement(SQLParser.CreateTableStatementContext ctx) {
-        return null;
+        return String.valueOf(visit(ctx.create_table_stmt()));
     }
 
     @Override
@@ -76,12 +78,12 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
 
     @Override
     public String visitShowDatabaseStatement(SQLParser.ShowDatabaseStatementContext ctx) {
-        return manager.showDatabases();
+        return String.valueOf(visit(ctx.show_db_stmt()));
     }
 
     @Override
-    public Object visitShowTableStatement(SQLParser.ShowTableStatementContext ctx) {
-        return null;
+    public String visitShowTableStatement(SQLParser.ShowTableStatementContext ctx) {
+        return String.valueOf(visit(ctx.show_table_stmt()));
     }
 
     @Override
@@ -100,29 +102,46 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
         String name = ctx.database_name().getText();
         try {
             manager.createDatabase(name);
-        } catch (RuntimeException e) {
+        } catch (Exception e) {
             return e.getMessage();
         }
         return "Created database " + name + ".";
     }
 
     @Override
-    public Object visitDrop_db_stmt(SQLParser.Drop_db_stmtContext ctx) {
+    public String visitDrop_db_stmt(SQLParser.Drop_db_stmtContext ctx) {
         String name = ctx.database_name().getText();
         try {
             if (ctx.K_IF() != null && ctx.K_EXISTS() != null)
                 manager.deleteDatabaseIfExist(ctx.database_name().getText());
             else
                 manager.deleteDatabase(ctx.database_name().getText());
-        } catch (RuntimeException e) {
+        } catch (Exception e) {
             return e.getMessage();
         }
         return "Dropped database " + name + ".";
     }
 
     @Override
-    public Object visitCreate_table_stmt(SQLParser.Create_table_stmtContext ctx) {
-        return null;
+    public String visitCreate_table_stmt(SQLParser.Create_table_stmtContext ctx) {
+        String name = ctx.table_name().getText();
+        int n = ctx.column_def().size();
+        Column[] columns = new Column[n];
+        int i = 0;
+        for (SQLParser.Column_defContext subCtx : ctx.column_def())
+            columns[i++] = (Column) visit(subCtx);
+        if (ctx.table_constraint() != null) {
+            String primaryName = String.valueOf(visit(ctx.table_constraint()));
+            for (Column c : columns)
+                if (c.getName().equals(primaryName))
+                    c.setPrimary(true);
+        }
+        try {
+            manager.createTable(name, columns);
+        } catch (Exception e) {
+            return e.getMessage();
+        }
+        return "Created table " + name + ".";
     }
 
     @Override
@@ -130,7 +149,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
         String name = ctx.database_name().getText();
         try {
             manager.switchDatabase(ctx.database_name().getText());
-        } catch (RuntimeException e) {
+        } catch (Exception e) {
             return e.getMessage();
         }
         return "Switched to database " + name + ".";
@@ -147,8 +166,8 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     }
 
     @Override
-    public Object visitShow_db_stmt(SQLParser.Show_db_stmtContext ctx) {
-        return null;
+    public String visitShow_db_stmt(SQLParser.Show_db_stmtContext ctx) {
+        return manager.showDatabases();
     }
 
     @Override
@@ -157,8 +176,8 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     }
 
     @Override
-    public Object visitShow_table_stmt(SQLParser.Show_table_stmtContext ctx) {
-        return null;
+    public String visitShow_table_stmt(SQLParser.Show_table_stmtContext ctx) {
+        return manager.showTables(ctx.database_name().getText());
     }
 
     @Override
@@ -192,43 +211,56 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     }
 
     @Override
-    public Object visitColumn_def(SQLParser.Column_defContext ctx) {
-        return null;
+    public Column visitColumn_def(SQLParser.Column_defContext ctx) {
+        boolean notNull = false;
+        boolean primary = false;
+        for (SQLParser.Column_constraintContext subCtx : ctx.column_constraint()) {
+            Constraint constraint = (Constraint) visit(subCtx);
+            if (constraint.equals(Constraint.PRIMARY))
+                primary = true;
+            else if (constraint.equals(Constraint.NOTNULL))
+                notNull = true;
+        }
+        String name = ctx.column_name().getText();
+        Pair<Type, Integer> type = (Pair<Type, Integer>) visit(ctx.type_name());
+        Type columnType = type.getKey();
+        int maxLength = type.getValue();
+        return new Column(name, columnType, primary, notNull, maxLength);
     }
 
     @Override
-    public Object visitTypeInt(SQLParser.TypeIntContext ctx) {
-        return null;
+    public Pair<Type, Integer> visitTypeInt(SQLParser.TypeIntContext ctx) {
+        return new Pair<>(Type.INT, -1);
     }
 
     @Override
-    public Object visitTypeLong(SQLParser.TypeLongContext ctx) {
-        return null;
+    public Pair<Type, Integer> visitTypeLong(SQLParser.TypeLongContext ctx) {
+        return new Pair<>(Type.LONG, -1);
     }
 
     @Override
-    public Object visitTypeFloat(SQLParser.TypeFloatContext ctx) {
-        return null;
+    public Pair<Type, Integer> visitTypeFloat(SQLParser.TypeFloatContext ctx) {
+        return new Pair<>(Type.FLOAT, -1);
     }
 
     @Override
-    public Object visitTypeDouble(SQLParser.TypeDoubleContext ctx) {
-        return null;
+    public Pair<Type, Integer> visitTypeDouble(SQLParser.TypeDoubleContext ctx) {
+        return new Pair<>(Type.DOUBLE, -1);
     }
 
     @Override
-    public Object visitTypeString(SQLParser.TypeStringContext ctx) {
-        return null;
+    public Pair<Type, Integer> visitTypeString(SQLParser.TypeStringContext ctx) {
+        return new Pair<>(Type.STRING, Integer.valueOf(ctx.INTEGER().getText()));
     }
 
     @Override
-    public Object visitPrimaryKeyConstraint(SQLParser.PrimaryKeyConstraintContext ctx) {
-        return null;
+    public Constraint visitPrimaryKeyConstraint(SQLParser.PrimaryKeyConstraintContext ctx) {
+        return Constraint.PRIMARY;
     }
 
     @Override
-    public Object visitNotNullConstraint(SQLParser.NotNullConstraintContext ctx) {
-        return null;
+    public Constraint visitNotNullConstraint(SQLParser.NotNullConstraintContext ctx) {
+        return Constraint.NOTNULL;
     }
 
     @Override
@@ -237,8 +269,8 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     }
 
     @Override
-    public Object visitTable_constraint(SQLParser.Table_constraintContext ctx) {
-        return null;
+    public String visitTable_constraint(SQLParser.Table_constraintContext ctx) {
+        return ctx.column_name().getText();
     }
 
     @Override

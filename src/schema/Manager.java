@@ -2,6 +2,7 @@ package schema;
 
 import exception.DatabaseAlreadyExistsException;
 import exception.DatabaseNotExistsException;
+import exception.InternalException;
 import exception.NoRemovalAuthorityException;
 
 import java.io.*;
@@ -10,14 +11,14 @@ import java.util.HashMap;
 public class Manager {
     private HashMap<String, Database> databases;
     private String adminDatabaseName = "admin";
-    private String currentDatabase;
+    private String current;
     private static final String persistFileName = "databases.dat";
 
     public Manager() throws IOException {
         this.databases = new HashMap<>();
         recoverDatabases();
         createDatabaseIfNotExists(adminDatabaseName);
-        currentDatabase = adminDatabaseName;
+        current = adminDatabaseName;
     }
 
     private void createDatabaseIfNotExists(String name) {
@@ -29,7 +30,7 @@ public class Manager {
     public void switchDatabase(String name) {
         if (!databases.containsKey(name))
             throw new DatabaseNotExistsException(name);
-        currentDatabase = name;
+        current = name;
     }
 
     public void createDatabase(String name) {
@@ -73,6 +74,19 @@ public class Manager {
         StringBuilder sb = new StringBuilder();
         for (String s : databases.keySet())
             sb.append(s).append(' ');
+        if (sb.length() == 0)
+            return "--EMPTY--";
+        return sb.toString();
+    }
+
+    public String showTables(String name) {
+        if (!databases.containsKey(name))
+            throw new DatabaseNotExistsException(name);
+        StringBuilder sb = new StringBuilder();
+        for (String s : databases.get(name).tables.keySet())
+            sb.append(s).append(' ');
+        if (sb.length() == 0)
+            return "--EMPTY--";
         return sb.toString();
     }
 
@@ -88,6 +102,14 @@ public class Manager {
             databases.put(tmpDataBaseName, database);
         }
         reader.close();
+    }
+
+    public void createTable(String name, Column[] columns) {
+        try {
+            databases.get(current).createTable(name, columns);
+        } catch (IOException e) {
+            throw new InternalException(e.getMessage());
+        }
     }
 
     public void quit() {

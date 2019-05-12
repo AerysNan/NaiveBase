@@ -11,7 +11,6 @@ import java.util.Arrays;
 public class Table {
     private String name;
     private ArrayList<Column> columns;
-    private ArrayList<Column> primaryKeys;
     private BPlusTree<Entry, Row> index;
 
     private Page page;
@@ -21,10 +20,6 @@ public class Table {
     public Table(String name, Column[] columns) throws IOException {
         this.name = name;
         this.columns = new ArrayList<>(Arrays.asList(columns));
-        this.primaryKeys = new ArrayList<>();
-        for (Column c : columns)
-            if (c.primary)
-                primaryKeys.add(c);
         this.index = new BPlusTree<>();
         this.pageNum = 0;
         this.page = new Page(name, pageNum);
