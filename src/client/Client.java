@@ -54,7 +54,7 @@ public class Client {
             String response = client.read();
             if (!response.equals(""))
                 System.out.println(response);
-            if (response.equals("Quited. \n"))
+            if (response.equals("Quited. "))
                 break;
         }
     }

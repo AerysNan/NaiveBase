@@ -9,6 +9,6 @@ public class NoRemovalAuthorityException extends RuntimeException {
 
     @Override
     public String getMessage() {
-        return "Exception: not enough authority to delete " + name + ".";
+        return "Exception: not enough authority to delete " + name + "!";
     }
 }

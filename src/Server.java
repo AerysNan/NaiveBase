@@ -60,7 +60,7 @@ public class Server {
                 System.out.println(message);
             String result = evaluator.evaluate(message);
             server.write(result);
-            if (result.equals("Quited. \n"))
+            if (result.equals("Quited. "))
                 break;
         }
     }
