@@ -46,28 +46,6 @@ public final class BPlusTree<K extends Comparable<K>, V> {
         return root.containsKey(key);
     }
 
-    public String toString() {
-        return toString(root, height, "") + "\n";
-    }
-
-    private String toString(Node node, int height, String indent) {
-        StringBuilder s = new StringBuilder();
-        if (height == 0) {
-            LeafNode _node = (LeafNode) node;
-            for (int j = 0; j < node.getSize(); j++) {
-                s.append(indent).append(_node.keys.get(j)).append(" : ").append(_node.values.get(j)).append("\n");
-            }
-        } else {
-            InternalNode _node = (InternalNode) node;
-            for (int j = 0; j < node.getSize(); j++) {
-                s.append(toString(_node.children.get(j), height - 1, indent + "   "));
-                s.append(indent).append("(").append(_node.keys.get(j)).append(")\n");
-            }
-            s.append(toString(_node.children.get(node.getSize()), height - 1, indent + "   "));
-        }
-        return s.toString();
-    }
-
     private abstract class Node {
 
         ArrayList<K> keys;

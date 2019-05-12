@@ -37,6 +37,7 @@ public class Table {
             throw new InternalException("failed to get table data files.");
         if (files.length == 1 && files[0].getName().equals("metadata"))
             return;
+        int maxPage = Integer.MIN_VALUE;
         for (File f : files) {
             if (!f.getName().startsWith(databaseName + "_" + tableName))
                 continue;
@@ -53,7 +54,6 @@ public class Table {
             }
             int pageID = rows.get(0).getPageID();
             Page page = new Page(databaseName, tableName, pageID);
-            int maxPage = Integer.MIN_VALUE;
             for (Row row : rows) {
                 for (int i = 0; i < columns.size(); i++) {
                     Entry entry = row.getEntries().get(i);
@@ -66,10 +66,10 @@ public class Table {
                     }
                 }
             }
-            this.pageNum = pageID;
             if (pages.size() < maxPageNum)
                 addPage(page);
         }
+        this.pageNum = maxPage;
     }
 
     private void addPage(Page page) {
@@ -81,6 +81,8 @@ public class Table {
 
     public void insert(Entry[] entries) {
         Row row = new Row(entries, pageNum);
+        for(Entry e: entries)
+            e.setTable(this);
         for (int i = 0; i < entries.length; i++) {
             if (columns.get(i).primary) {
                 int size = pages.get(pageNum).addRow(row.getEntries().get(i), row.toString().length());
