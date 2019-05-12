@@ -1,9 +1,6 @@
 package schema;
 
-import exception.DatabaseAlreadyExistsException;
-import exception.DatabaseNotExistsException;
-import exception.InternalException;
-import exception.NoRemovalAuthorityException;
+import exception.*;
 
 import java.io.*;
 import java.util.HashMap;
@@ -78,6 +75,20 @@ public class Manager {
             e.printStackTrace();
         }
 
+    }
+
+    public void insert(String tableName, Entry[] entries) {
+        Database database = databases.get(current);
+        if (!database.tables.containsKey(tableName))
+            throw new TableNotExistException(tableName);
+        database.tables.get(tableName).insert(entries);
+    }
+
+    public Row get(String tableName, Entry entry){
+        Database database = databases.get(current);
+        if(!database.tables.containsKey(tableName))
+            throw new TableNotExistException(tableName);
+        return database.tables.get(tableName).get(entry);
     }
 
     public String showDatabases() {

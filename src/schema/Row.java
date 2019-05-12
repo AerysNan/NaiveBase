@@ -10,11 +10,11 @@ public class Row implements Serializable {
     private ArrayList<Entry> entries;
     private int pageID;
 
-    Row(int pageID) {
+    public Row(int pageID) {
         this.pageID = pageID;
     }
 
-    Row(Entry[] entries, int pageID) {
+    public Row(Entry[] entries, int pageID) {
         this.entries = new ArrayList<>(Arrays.asList(entries));
         this.pageID = pageID;
     }
@@ -28,6 +28,8 @@ public class Row implements Serializable {
     }
 
     public String toString() {
+        if (entries == null)
+            return "EMPTY";
         StringBuilder sb = new StringBuilder();
         for (Entry e : entries)
             sb.append(e.toString()).append(',');

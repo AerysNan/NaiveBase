@@ -6,6 +6,7 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 
 import static org.junit.Assert.assertEquals;
 
@@ -20,10 +21,13 @@ public class BPlusTreeTest {
         tree = new BPlusTree<>();
         keys = new ArrayList<>();
         map = new HashMap<>();
+        HashSet<Integer> set = new HashSet<>();
         int size = 10000;
         for (int i = 0; i < size; i++) {
             double random = Math.random();
-            int key = (int) (random * size);
+            set.add((int) (random * size));
+        }
+        for (Integer key : set) {
             keys.add(key);
             tree.put(key, String.valueOf(key));
             map.put(key, String.valueOf(key));
@@ -31,18 +35,8 @@ public class BPlusTreeTest {
     }
 
     @Test
-    public void put() {
+    public void testGet() {
         for (Integer key : keys) {
-            assertEquals(tree.get(key), map.get(key));
-        }
-    }
-
-    @Test
-    public void remove() {
-        for (Integer key : keys) {
-            tree.remove(key);
-            map.remove(key);
-            assertEquals(tree.size(), map.size());
             assertEquals(tree.get(key), map.get(key));
         }
     }
