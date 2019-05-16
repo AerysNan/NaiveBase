@@ -82,8 +82,8 @@ final class BPlusTreeInternalNode<K extends Comparable<K>, V> extends BPlusTreeN
 
     @Override
     BPlusTreeNode<K, V> split() {
-        int from = getSize() / 2 + 1;
-        int to = getSize();
+        int from = size() / 2 + 1;
+        int to = size();
         BPlusTreeInternalNode<K, V> newSiblingNode = new BPlusTreeInternalNode(to - from);
         for (int i = 0; i < to - from; i++) {
             newSiblingNode.keys.set(i, keys.get(i + from));
@@ -143,7 +143,7 @@ final class BPlusTreeInternalNode<K extends Comparable<K>, V> extends BPlusTreeN
     BPlusTreeNode<K, V> getChildRightSibling(K key) {
         int index = binarySearch(key);
         int childIndex = index >= 0 ? index + 1 : -index - 1;
-        if (childIndex < getSize())
+        if (childIndex < size())
             return children.get(childIndex + 1);
         return null;
     }

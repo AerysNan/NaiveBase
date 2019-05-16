@@ -11,7 +11,7 @@ import static global.Global.fanout;
 
 class BPlusTreeLeafNode<K extends Comparable<K>, V> extends BPlusTreeNode<K, V> {
 
-    private ArrayList<V> values;
+    ArrayList<V> values;
     private BPlusTreeLeafNode<K, V> next;
 
     BPlusTreeLeafNode(int size) {
@@ -73,8 +73,8 @@ class BPlusTreeLeafNode<K extends Comparable<K>, V> extends BPlusTreeNode<K, V> 
 
     @Override
     BPlusTreeNode split() {
-        int from = (getSize() + 1) / 2;
-        int to = getSize();
+        int from = (size() + 1) / 2;
+        int to = size();
         BPlusTreeLeafNode<K, V> newSiblingNode = new BPlusTreeLeafNode(to - from);
         for (int i = 0; i < to - from; i++) {
             newSiblingNode.keys.set(i, keys.get(i + from));
@@ -90,9 +90,9 @@ class BPlusTreeLeafNode<K extends Comparable<K>, V> extends BPlusTreeNode<K, V> 
 
     @Override
     void merge(BPlusTreeNode<K, V> sibling) {
-        int index = getSize();
+        int index = size();
         BPlusTreeLeafNode<K, V> node = (BPlusTreeLeafNode<K, V>) sibling;
-        int length = node.getSize();
+        int length = node.size();
         for (int i = 0; i < length; i++) {
             keys.set(i + index, node.keys.get(i));
             values.set(i + index, node.values.get(i));

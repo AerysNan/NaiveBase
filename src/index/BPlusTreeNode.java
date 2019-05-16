@@ -23,7 +23,7 @@ abstract class BPlusTreeNode<K extends Comparable<K>, V> {
 
     abstract void merge(BPlusTreeNode<K, V> sibling);
 
-    int getSize() {
+    int size() {
         return nodeSize;
     }
 
