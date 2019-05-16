@@ -75,8 +75,8 @@ public class Database {
         else {
             Column primaryColumn = new Column("uid", Type.LONG, true, true, -1);
             Column[] newColumns = new Column[columns.length + 1];
-            newColumns[0] = primaryColumn;
-            System.arraycopy(columns, 0, newColumns, 1, newColumns.length - 1);
+            newColumns[columns.length] = primaryColumn;
+            System.arraycopy(columns, 0, newColumns, 0, newColumns.length - 1);
             table = new Table(dataBaseName, tableName, newColumns);
         }
         tables.put(tableName, table);

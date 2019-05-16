@@ -9,6 +9,6 @@ public class TableNotExistException extends RuntimeException {
 
     @Override
     public String getMessage() {
-        return "Exception: table " + name + " doesn;t exist!";
+        return "Exception: table " + name + " doesn't exist!";
     }
 }

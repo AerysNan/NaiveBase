@@ -57,8 +57,8 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     }
 
     @Override
-    public Object visitInsertStatement(SQLParser.InsertStatementContext ctx) {
-        return null;
+    public String visitInsertStatement(SQLParser.InsertStatementContext ctx) {
+        return String.valueOf(visit(ctx.insert_stmt()));
     }
 
     @Override
@@ -134,7 +134,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
         int i = 0;
         for (SQLParser.Column_defContext subCtx : ctx.column_def())
             columns[i++] = (Column) visit(subCtx);
-        if (ctx.table_constraint() != null) {
+        if (ctx.table_constraint() != null ) {
             String primaryName = String.valueOf(visit(ctx.table_constraint()));
             for (Column c : columns)
                 if (c.getName().equals(primaryName))
@@ -185,13 +185,31 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     }
 
     @Override
-    public Object visitInsert_stmt(SQLParser.Insert_stmtContext ctx) {
-        return null;
+    public String visitInsert_stmt(SQLParser.Insert_stmtContext ctx) {
+        String tableName = ctx.table_name().getText();
+        String[] columnNames = null;
+        if (ctx.column_name() != null && ctx.column_name().size() != 0) {
+            columnNames = new String[ctx.column_name().size()];
+            for (int i = 0; i < ctx.column_name().size(); i++)
+                columnNames[i] = ctx.column_name(i).getText();
+        }
+        for (SQLParser.Value_entryContext subCtx : ctx.value_entry()) {
+            String[] values = (String[]) visit(subCtx);
+            try {
+                manager.insert(tableName, values, columnNames);
+            } catch (Exception e) {
+                return e.getMessage();
+            }
+        }
+        return "Inserted " + ctx.value_entry().size() + " rows.";
     }
 
     @Override
-    public Object visitValue_entry(SQLParser.Value_entryContext ctx) {
-        return null;
+    public String[] visitValue_entry(SQLParser.Value_entryContext ctx) {
+        String[] values = new String[ctx.expr().size()];
+        for (int i = 0; i < ctx.expr().size(); i++)
+            values[i] = ctx.expr(i).getText();
+        return values;
     }
 
     @Override
@@ -224,6 +242,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
                 primary = true;
             else if (constraint.equals(Constraint.NOTNULL))
                 notNull = true;
+            notNull = notNull || primary;
         }
         String name = ctx.column_name().getText();
         Pair<Type, Integer> type = (Pair<Type, Integer>) visit(ctx.type_name());

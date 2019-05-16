@@ -10,15 +10,13 @@ import static org.junit.Assert.assertEquals;
 
 public class TableTest {
     private Manager manager;
-    private int maxPageNum = 8;
-    private int maxPageSize = 128;
     private int testNum = 1000;
 
     @Before
     public void beforeClass() {
         manager = new Manager();
-        Global.maxPageNum = maxPageNum;
-        Global.maxPageSize = maxPageSize;
+        Global.maxPageNum = 8;
+        Global.maxPageSize = 128;
         Column col1 = new Column("id", Type.INT, true, false, -1);
         Column col2 = new Column("name", Type.STRING, false, false, 10);
         Column col3 = new Column("score", Type.DOUBLE, false, false, -1);
@@ -26,14 +24,8 @@ public class TableTest {
         manager.createDatabase("test");
         manager.switchDatabase("test");
         manager.createTable("grade", columns);
-        for (int i = 0; i < testNum; i++) {
-            Entry[] e = new Entry[]{
-                    new Entry(0, i),
-                    new Entry(1, "A"),
-                    new Entry(2, 100 - i)
-            };
-            manager.insert("grade", e);
-        }
+        for (int i = 0; i < testNum; i++)
+            manager.insert("grade", new String[]{String.valueOf(i), "'A'", String.valueOf(100 - i)}, null);
         manager.quit();
     }
 
@@ -46,7 +38,7 @@ public class TableTest {
             Entry[] e = new Entry[]{
                     new Entry(0, i),
                     new Entry(1, "A"),
-                    new Entry(2, 100 - i)
+                    new Entry(2, (double) (100 - i))
             };
             assertEquals(new Row(e, -1).toString(), manager.get("grade", key).toString());
         }

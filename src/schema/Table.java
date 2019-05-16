@@ -1,6 +1,6 @@
 package schema;
 
-import exception.InternalException;
+import exception.*;
 import index.BPlusTree;
 import storage.Page;
 
@@ -13,6 +13,7 @@ public class Table {
     private String databaseName;
     String tableName;
     ArrayList<Column> columns;
+    private long uid;
     private transient BPlusTree<Entry, Row> index;
 
     private HashMap<Integer, Page> pages;
@@ -23,6 +24,7 @@ public class Table {
         this.databaseName = databaseName;
         this.tableName = tableName;
         this.columns = new ArrayList<>(Arrays.asList(columns));
+        this.uid = columns[columns.length - 1].name.equals("uid") ? 0 : -1;
         this.index = new BPlusTree<>();
         pages = new HashMap<>();
         times = new HashMap<>();
@@ -38,6 +40,8 @@ public class Table {
         if (files.length == 1 && files[0].getName().equals("metadata"))
             return;
         int maxPage = Integer.MIN_VALUE;
+        boolean hasUID = uid >= 0;
+        int columnSize = columns.size();
         for (File f : files) {
             if (!f.getName().startsWith(databaseName + "_" + tableName))
                 continue;
@@ -55,7 +59,7 @@ public class Table {
             int pageID = rows.get(0).getPageID();
             Page page = new Page(databaseName, tableName, pageID);
             for (Row row : rows) {
-                for (int i = 0; i < columns.size(); i++) {
+                for (int i = 0; i < columnSize; i++) {
                     Entry entry = row.getEntries().get(i);
                     entry.setTable(this);
                     if (columns.get(i).primary) {
@@ -65,6 +69,8 @@ public class Table {
                         break;
                     }
                 }
+                if (hasUID)
+                    uid = Math.max(uid, (Long) (row.getEntries().get(columnSize - 1).value));
             }
             if (pages.size() < maxPageNum)
                 addPage(page);
@@ -79,21 +85,68 @@ public class Table {
         times.put(page.getID(), System.currentTimeMillis());
     }
 
-    public void insert(Entry[] entries) {
+    void insert(String[] values, String[] columnNames) {
+        if (columnNames != null) {
+            if (columnNames.length != values.length)
+                throw new ColumnMismatchException();
+            for (String name : columnNames)
+                if (!hasColumn(name))
+                    throw new ColumnMismatchException();
+
+        }
+        Entry[] entries = new Entry[columns.size()];
+        int offset = uid >= 0 ? 1 : 0;
+        for (int i = 0; i < entries.length - offset; i++) {
+            Object value = null;
+            Column column = columns.get(i);
+            if (columnNames == null || columnNames.length == 0)
+                try {
+                    value = parseValue(values[i], i);
+                } catch (Exception e) {
+                    throw new ValueFormatException(column.name);
+                }
+            else {
+                boolean found = false;
+                for (int j = 0; j < columnNames.length; j++)
+                    if (columnNames[j].equals(column.name)) {
+                        try {
+                            value = parseValue(values[j], i);
+                        } catch (Exception e) {
+                            throw new ValueFormatException(column.name);
+                        }
+                        found = true;
+                        break;
+                    }
+                if (!found && column.notNull)
+                    throw new NullValueException(column.name);
+            }
+            if (column.type == Type.STRING && value != null && String.valueOf(value).length() > column.maxLength)
+                throw new StringExceedMaxLengthException(column.name);
+            entries[i] = new Entry(i, value);
+        }
+        if (uid >= 0)
+            entries[entries.length - 1] = new Entry(entries.length - 1, ++uid);
         Row row = new Row(entries, pageNum);
-        for(Entry e: entries)
+        for (Entry e : entries)
             e.setTable(this);
         for (int i = 0; i < entries.length; i++) {
             if (columns.get(i).primary) {
+                index.put(row.getEntries().get(i), row);
                 int size = pages.get(pageNum).addRow(row.getEntries().get(i), row.toString().length());
                 pages.get(pageNum).setDirty();
                 if (size >= maxPageSize)
                     allocateNewPage();
-                index.put(row.getEntries().get(i), row);
                 break;
             }
         }
         times.put(pages.get(pageNum).getID(), System.currentTimeMillis());
+    }
+
+    private boolean hasColumn(String name) {
+        for (Column c : columns)
+            if (name.equals(c.name))
+                return true;
+        return false;
     }
 
     public Row get(Entry entry) {
@@ -138,6 +191,27 @@ public class Table {
             }
         }
 
+    }
+
+    private Object parseValue(String s, int index) {
+        if (s.equals("null")) {
+            if (columns.get(index).notNull)
+                throw new NullValueException(columns.get(index).name);
+            else return null;
+        }
+        switch (columns.get(index).type) {
+            case DOUBLE:
+                return Double.parseDouble(s);
+            case INT:
+                return Integer.parseInt(s);
+            case FLOAT:
+                return Float.parseFloat(s);
+            case LONG:
+                return Long.parseLong(s);
+            case STRING:
+                return s.substring(1, s.length() - 1);
+        }
+        return null;
     }
 
     int compareEntries(Entry e1, Entry e2) {
@@ -229,8 +303,8 @@ public class Table {
         addPage(page);
     }
 
-    void commit(){
-        for (Page page : pages.values())
+    void commit() {
+        for (Page page : pages.values()) {
             if (page.isDirty()) {
                 try {
                     Serialize(page);
@@ -238,5 +312,6 @@ public class Table {
                     throw new InternalException("failed to write dirty page to disk.");
                 }
             }
+        }
     }
 }

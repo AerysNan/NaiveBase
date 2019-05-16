@@ -87,7 +87,12 @@ column_constraint :
 expr :
     literal_value
     | column_full_name
+    | unary_operator expr
     | expr ( '<' | '<=' | '>' | '>=' | '=' | '<>' ) expr ;
+
+unary_operator :
+    '-'
+    | '+' ;
 
 table_constraint :
     K_PRIMARY K_KEY '(' column_name ')' ;
@@ -122,7 +127,7 @@ any_name :
     | STRING_LITERAL ;
 
 T_INT : I N T;
-T_LONG : F L O A T;
+T_LONG : L O N G;
 T_FLOAT : F L O A T;
 T_DOUBLE : D O U B L E;
 T_STRING : S T R I N G;
@@ -169,10 +174,16 @@ IDENTIFIER :
     | '[' ~']'* ']'
     | [a-zA-Z_] [a-zA-Z_0-9]* ;
 
-INTEGER : DIGIT+;
-
 NUMERIC_LITERAL :
-    '-'? DIGIT+ ( '.' DIGIT* )? ( E [-+]? DIGIT+ )? ;
+    INTEGER EXPONENT?
+    | DIGIT+ '.' DIGIT* EXPONENT?
+    | '.' DIGIT+ EXPONENT? ;
+
+INTEGER :
+    DIGIT+ ;
+
+EXPONENT :
+    E [-+]? DIGIT+ ;
 
 STRING_LITERAL :
     '\'' ( ~'\'' | '\'\'' )* '\'' ;
