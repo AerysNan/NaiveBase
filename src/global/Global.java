@@ -7,5 +7,6 @@ public class Global {
     public static String dataPath = "./data/";
     public static int maxPageNum = 256;
     public static int maxPageSize = 4096;
+    public static int fanout = 129;
 
 }

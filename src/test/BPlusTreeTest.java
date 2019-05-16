@@ -36,8 +36,17 @@ public class BPlusTreeTest {
 
     @Test
     public void testGet() {
-        for (Integer key : keys) {
-            assertEquals(tree.get(key), map.get(key));
-        }
+        for (Integer key : keys)
+            assertEquals(map.get(key), tree.get(key));
+    }
+
+    @Test
+    public void testRemove() {
+        int size = keys.size();
+        for (int i = 0; i < size; i += 2)
+            tree.remove(keys.get(i));
+        assertEquals(size / 2, tree.size());
+        for (int i = 1; i < size; i += 2)
+            assertEquals(map.get(keys.get(i)), tree.get(keys.get(i)));
     }
 }
