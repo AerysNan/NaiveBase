@@ -1,7 +1,5 @@
 package index;
 
-import java.util.Iterator;
-
 public final class BPlusTree<K extends Comparable<K>, V> implements Iterable<V> {
 
     BPlusTreeNode<K, V> root;
@@ -36,7 +34,7 @@ public final class BPlusTree<K extends Comparable<K>, V> implements Iterable<V> 
         if (key == null) throw new IllegalArgumentException("argument key to remove() is null");
         root.remove(key);
         size--;
-        if (root instanceof BPlusTreeInternalNode && root.getSize() == 0) {
+        if (root instanceof BPlusTreeInternalNode && root.size() == 0) {
             root = ((BPlusTreeInternalNode<K, V>) root).children.get(0);
         }
     }
@@ -58,7 +56,7 @@ public final class BPlusTree<K extends Comparable<K>, V> implements Iterable<V> 
     }
 
     @Override
-    public Iterator<V> iterator() {
-        return null;
+    public BPlusTreeIterator<K, V> iterator() {
+        return new BPlusTreeIterator<>(this);
     }
 }

@@ -1,25 +1,28 @@
 package test;
 
 import index.BPlusTree;
+import index.BPlusTreeIterator;
 import org.junit.Before;
 import org.junit.Test;
+import static org.junit.Assert.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
-import static org.junit.Assert.assertEquals;
 
 public class BPlusTreeTest {
 
-    private BPlusTree<Integer, String> tree;
+    private BPlusTree<Integer, Integer> tree;
     private ArrayList<Integer> keys;
-    private HashMap<Integer, String> map;
+    private ArrayList<Integer> values;
+    private HashMap<Integer, Integer> map;
 
     @Before
     public void setUp() {
         tree = new BPlusTree<>();
         keys = new ArrayList<>();
+        values = new ArrayList<>();
         map = new HashMap<>();
         HashSet<Integer> set = new HashSet<>();
         int size = 10000;
@@ -28,9 +31,11 @@ public class BPlusTreeTest {
             set.add((int) (random * size));
         }
         for (Integer key : set) {
+            int hashCode = key.hashCode();
             keys.add(key);
-            tree.put(key, String.valueOf(key));
-            map.put(key, String.valueOf(key));
+            values.add(hashCode);
+            tree.put(key, hashCode);
+            map.put(key, hashCode);
         }
     }
 
@@ -48,5 +53,16 @@ public class BPlusTreeTest {
         assertEquals(size / 2, tree.size());
         for (int i = 1; i < size; i += 2)
             assertEquals(map.get(keys.get(i)), tree.get(keys.get(i)));
+    }
+
+    @Test
+    public void testIterator() {
+        BPlusTreeIterator<Integer, Integer> iterator = tree.iterator();
+        int c = 0;
+        while (iterator.hasNext()) {
+            assertTrue(values.contains(iterator.next()));
+            c++;
+        }
+        assertEquals(values.size(), c);
     }
 }
