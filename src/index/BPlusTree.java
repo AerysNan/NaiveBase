@@ -41,11 +41,6 @@ public final class BPlusTree<K extends Comparable<K>, V> {
         root.remove(key);
     }
 
-    public boolean containsKey(K key) {
-        if (key == null) throw new IllegalArgumentException("argument key to containsKey() is null");
-        return root.containsKey(key);
-    }
-
     private abstract class Node {
 
         ArrayList<K> keys;
@@ -56,8 +51,6 @@ public final class BPlusTree<K extends Comparable<K>, V> {
         abstract void put(K key, V value);
 
         abstract void remove(K key);
-
-        abstract boolean containsKey(K key);
 
         abstract K getFirstLeafKey();
 
@@ -133,10 +126,6 @@ public final class BPlusTree<K extends Comparable<K>, V> {
             }
         }
 
-        @Override
-        boolean containsKey(K key) {
-            return searchChild(key).containsKey(key);
-        }
 
         @Override
         V get(K key) {
@@ -286,11 +275,6 @@ public final class BPlusTree<K extends Comparable<K>, V> {
             for (int i = index; i < nodeSize - 1; i++) {
                 values.set(i, values.get(i + 1));
             }
-        }
-
-        @Override
-        boolean containsKey(K key) {
-            return binarySearch(key) >= 0;
         }
 
         @Override

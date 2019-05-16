@@ -53,7 +53,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
 
     @Override
     public Object visitDropTableStatement(SQLParser.DropTableStatementContext ctx) {
-        return null;
+        return String.valueOf(visit(ctx.drop_table_stmt()));
     }
 
     @Override
@@ -134,7 +134,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
         int i = 0;
         for (SQLParser.Column_defContext subCtx : ctx.column_def())
             columns[i++] = (Column) visit(subCtx);
-        if (ctx.table_constraint() != null ) {
+        if (ctx.table_constraint() != null) {
             String primaryName = String.valueOf(visit(ctx.table_constraint()));
             for (Column c : columns)
                 if (c.getName().equals(primaryName))
@@ -166,7 +166,16 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
 
     @Override
     public Object visitDrop_table_stmt(SQLParser.Drop_table_stmtContext ctx) {
-        return null;
+        String name = ctx.table_name().getText();
+        try {
+            if (ctx.K_IF() != null && ctx.K_EXISTS() != null)
+                manager.deleteTableIfExist(ctx.table_name().getText());
+            else
+                manager.deleteTable(ctx.table_name().getText());
+        } catch (Exception e) {
+            return e.getMessage();
+        }
+        return "Dropped table " + name + ".";
     }
 
     @Override

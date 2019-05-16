@@ -40,4 +40,13 @@ public class BPlusTreeTest {
             assertEquals(tree.get(key), map.get(key));
         }
     }
+
+    @Test
+    public void testDelete(){
+        for (Integer key : keys) {
+            tree.remove(key);
+            map.remove(key);
+            assertEquals(tree.size(), map.size());
+        }
+    }
 }

@@ -1,9 +1,9 @@
 package exception;
 
-public class TableNotExistException extends RuntimeException {
+public class TableNotExistsException extends RuntimeException {
     private String name;
 
-    public TableNotExistException(String name) {
+    public TableNotExistsException(String name) {
         this.name = name;
     }
 

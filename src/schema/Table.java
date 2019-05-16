@@ -43,7 +43,9 @@ public class Table {
         boolean hasUID = uid >= 0;
         int columnSize = columns.size();
         for (File f : files) {
-            if (!f.getName().startsWith(databaseName + "_" + tableName))
+            String databaseName = f.getName().split("_")[0];
+            String tableName = f.getName().split("_")[1];
+            if (!(this.databaseName.equals(databaseName) && this.tableName.equals(tableName)))
                 continue;
             ArrayList<Row> rows;
             try {
@@ -190,7 +192,39 @@ public class Table {
                 break;
             }
         }
+    }
 
+    public void deleteAllPage() {
+        File path = new File(dataPath);
+        File[] files = path.listFiles();
+        if (files.length == 1 && files[0].getName().equals("metadata"))
+            return;
+        for (File f : files) {
+            String databaseName = f.getName().split("_")[0];
+            String tableName = f.getName().split("_")[1];
+            if (!(this.databaseName.equals(databaseName) && this.tableName.equals(tableName)))
+                continue;
+            File deleteFile = new File(dataPath + f.getName());
+            deleteFile.delete();
+        }
+    }
+
+    int compareEntries(Entry e1, Entry e2) {
+        assert e1.id == e2.id;
+        int index = e1.id;
+        switch (columns.get(index).type) {
+            case INT:
+                return ((Integer) e1.value).compareTo((Integer) e2.value);
+            case LONG:
+                return ((Long) e1.value).compareTo((Long) e2.value);
+            case FLOAT:
+                return ((Float) e1.value).compareTo((Float) e2.value);
+            case DOUBLE:
+                return ((Double) e1.value).compareTo((Double) e2.value);
+            case STRING:
+                return ((String) e1.value).compareTo((String) e2.value);
+        }
+        return 0;
     }
 
     private Object parseValue(String s, int index) {
@@ -212,24 +246,6 @@ public class Table {
                 return s.substring(1, s.length() - 1);
         }
         return null;
-    }
-
-    int compareEntries(Entry e1, Entry e2) {
-        assert e1.id == e2.id;
-        int index = e1.id;
-        switch (columns.get(index).type) {
-            case INT:
-                return ((Integer) e1.value).compareTo((Integer) e2.value);
-            case LONG:
-                return ((Long) e1.value).compareTo((Long) e2.value);
-            case FLOAT:
-                return ((Float) e1.value).compareTo((Float) e2.value);
-            case DOUBLE:
-                return ((Double) e1.value).compareTo((Double) e2.value);
-            case STRING:
-                return ((String) e1.value).compareTo((String) e2.value);
-        }
-        return 0;
     }
 
     private void Serialize(Page page) throws IOException {
