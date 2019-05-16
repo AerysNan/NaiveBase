@@ -43,6 +43,8 @@ public class Table {
         boolean hasUID = uid >= 0;
         int columnSize = columns.size();
         for (File f : files) {
+            if (f.getName().equals("metadata"))
+                continue;
             String databaseName = f.getName().split("_")[0];
             String tableName = f.getName().split("_")[1];
             if (!(this.databaseName.equals(databaseName) && this.tableName.equals(tableName)))
@@ -200,6 +202,8 @@ public class Table {
         if (files.length == 1 && files[0].getName().equals("metadata"))
             return;
         for (File f : files) {
+            if (f.getName().equals("metadata"))
+                continue;
             String databaseName = f.getName().split("_")[0];
             String tableName = f.getName().split("_")[1];
             if (!(this.databaseName.equals(databaseName) && this.tableName.equals(tableName)))
