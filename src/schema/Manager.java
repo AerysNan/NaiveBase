@@ -77,11 +77,11 @@ public class Manager {
 
     }
 
-    public void insert(String tableName, Entry[] entries) {
+    public void insert(String tableName, String[] values, String[] columnNames) {
         Database database = databases.get(current);
         if (!database.tables.containsKey(tableName))
             throw new TableNotExistException(tableName);
-        database.tables.get(tableName).insert(entries);
+        database.tables.get(tableName).insert(values, columnNames);
     }
 
     public Row get(String tableName, Entry entry){

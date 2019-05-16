@@ -4,8 +4,8 @@ public class Column {
     String name;
     Type type;
     boolean primary;
-    private boolean notNull;
-    private int maxLength;
+    boolean notNull;
+    int maxLength;
 
     public Column(String name, Type type, boolean primary, boolean notNull, int maxLength) {
         this.name = name;

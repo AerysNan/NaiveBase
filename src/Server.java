@@ -1,5 +1,4 @@
 import parser.Evaluator;
-import schema.*;
 
 import java.io.*;
 import java.net.ServerSocket;
