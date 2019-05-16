@@ -82,6 +82,18 @@ public class Database {
         tables.put(tableName, table);
     }
 
+    void deleteAllTable() {
+        for (String name : tables.keySet())
+            deleteTable(name);
+    }
+
+    void deleteTable(String name) {
+        File file = new File(metadataPath + this.dataBaseName + "_" + name + ".dat");
+        file.delete();
+        tables.get(name).deleteAllPage();
+        tables.remove(name);
+    }
+
     private void recoverDatabase() {
         File path = new File(metadataPath);
         if (!path.exists())
@@ -90,10 +102,10 @@ public class Database {
         if (files == null)
             throw new InternalException("failed to get table metadata files.");
         for (File f : files) {
-            String fileName = f.getName();
-            if (!fileName.startsWith(dataBaseName))
+            String databaseName = f.getName().split("_")[0];
+            if (!this.dataBaseName.equals(databaseName))
                 continue;
-            recoverTableColumn(fileName);
+            recoverTableColumn(f.getName());
         }
     }
 

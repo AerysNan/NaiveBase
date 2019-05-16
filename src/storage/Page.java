@@ -1,6 +1,7 @@
 package storage;
 
 import schema.Entry;
+import global.Global;
 
 import java.util.ArrayList;
 
@@ -19,7 +20,7 @@ public class Page {
     }
 
     public static String concatPageName(String databaseName, String tableName, int id) {
-        return "./data/" + databaseName + "_" + tableName + "_" + id + ".dat";
+        return Global.dataPath + databaseName + "_" + tableName + "_" + id + ".dat";
     }
 
     public boolean isDirty() {

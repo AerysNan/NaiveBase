@@ -44,7 +44,7 @@ public class Manager {
             path.mkdir();
         File mPath = new File(metadataPath);
         if (!mPath.exists())
-            mPath.mkdirs();
+            mPath.mkdir();
     }
 
     public void deleteDatabaseIfExist(String name) {
@@ -58,7 +58,21 @@ public class Manager {
             throw new NoRemovalAuthorityException(name);
         if (!databases.containsKey(name))
             throw new DatabaseNotExistsException(name);
+        databases.get(name).deleteAllTable();
         databases.remove(name);
+    }
+
+    public void deleteTableIfExist(String name) {
+        if (databases.get(current).tables.containsKey(name))
+            return;
+        deleteTable(name);
+    }
+
+    public void deleteTable(String name) {
+        if (!databases.get(current).tables.containsKey(name))
+            throw new TableNotExistsException(name);
+        databases.get(current).deleteTable(name);
+        databases.get(current).tables.remove(name);
     }
 
     private void persistDatabases() {
@@ -80,14 +94,14 @@ public class Manager {
     public void insert(String tableName, String[] values, String[] columnNames) {
         Database database = databases.get(current);
         if (!database.tables.containsKey(tableName))
-            throw new TableNotExistException(tableName);
+            throw new TableNotExistsException(tableName);
         database.tables.get(tableName).insert(values, columnNames);
     }
 
-    public Row get(String tableName, Entry entry){
+    public Row get(String tableName, Entry entry) {
         Database database = databases.get(current);
-        if(!database.tables.containsKey(tableName))
-            throw new TableNotExistException(tableName);
+        if (!database.tables.containsKey(tableName))
+            throw new TableNotExistsException(tableName);
         return database.tables.get(tableName).get(entry);
     }
 
