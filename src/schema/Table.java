@@ -9,7 +9,7 @@ import java.util.*;
 
 import static global.Global.*;
 
-public class Table {
+public class Table implements Iterable<Row> {
     private String databaseName;
     String tableName;
     ArrayList<Column> columns;
@@ -134,7 +134,7 @@ public class Table {
                 if (!found && column.notNull)
                     throw new NullValueException(column.name);
             }
-            if (column.type == Type.STRING && value != null && String.valueOf(value).length() > column.maxLength)
+            if (column.type == ColumnType.STRING && value != null && String.valueOf(value).length() > column.maxLength)
                 throw new StringExceedMaxLengthException(column.name);
             entries[i] = new Entry(i, (Comparable) value);
         }
@@ -342,5 +342,10 @@ public class Table {
                 }
             }
         }
+    }
+
+    @Override
+    public Iterator<Row> iterator() {
+        return index.iterator();
     }
 }

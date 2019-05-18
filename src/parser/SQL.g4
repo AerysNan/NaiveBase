@@ -64,11 +64,11 @@ select_stmt :
 
 select_core :
     K_SELECT ( K_DISTINCT | K_ALL )? result_column ( ',' result_column )*
-        K_FROM table_query ( K_WHERE expr )? ;
+        K_FROM table_query ( ',' table_query )* ( K_WHERE where_condition )? ;
 
 update_stmt :
     K_UPDATE table_name
-        K_SET column_name '=' expr ( ',' column_name '=' expr )* ( K_WHERE expr )? ;
+        K_SET column_name '=' expr ( ',' column_name '=' expr )* ( K_WHERE where_condition )? ;
 
 column_def :
     column_name type_name column_constraint* ;
@@ -84,11 +84,21 @@ column_constraint :
     K_PRIMARY K_KEY     # primaryKeyConstraint
     | K_NOT K_NULL      # notNullConstraint ;
 
+where_condition :
+    comparer comparator comparer;
+
+comparer :
+    column_full_name
+    | literal_value ;
+
+comparator :
+    EQ | NE | LE | GE | LT | GT ;
+
 expr :
     literal_value
     | column_full_name
     | unary_operator expr
-    | expr ( '<' | '<=' | '>' | '>=' | '=' | '<>' ) expr ;
+    | expr comparator expr ;
 
 unary_operator :
     '-'
@@ -103,7 +113,7 @@ result_column
     | column_full_name;
 
 table_query :
-    table_name ( K_JOIN table_name K_ON expr )? ;
+    table_name ( K_JOIN table_name K_ON where_condition )? ;
 
 literal_value :
     NUMERIC_LITERAL
@@ -125,6 +135,14 @@ column_name :
 any_name :
     IDENTIFIER
     | STRING_LITERAL ;
+
+EQ : '=';
+NE : '<>';
+LT : '<';
+GT : '>';
+LE : '<=';
+GE : '>=';
+
 
 T_INT : I N T;
 T_LONG : L O N G;

@@ -4,6 +4,8 @@ import exception.DuplicateFieldException;
 import exception.InternalException;
 import exception.MultiplePrimaryKeyException;
 import exception.TableAlreadyExistsException;
+import query.JointTable;
+import query.WhereCondition;
 
 import java.io.*;
 import java.nio.file.Paths;
@@ -98,6 +100,10 @@ class Database {
         tables.remove(name);
     }
 
+    String select(String[] columnsProjected, JointTable[] tablesQueried, WhereCondition whereCondition){
+        return "";
+    }
+
     private void recoverDatabase() {
         File path = new File(metadataPath);
         if (!path.exists())
@@ -133,22 +139,22 @@ class Database {
             String[] columnAttr = strColumn.split(",");
             if (columnAttr.length != 5)
                 throw new InternalException("table metadata file corrupted.");
-            Type type = Type.INT;
+            ColumnType type = ColumnType.INT;
             switch (columnAttr[1]) {
                 case "INT":
-                    type = Type.INT;
+                    type = ColumnType.INT;
                     break;
                 case "LONG":
-                    type = Type.LONG;
+                    type = ColumnType.LONG;
                     break;
                 case "FLOAT":
-                    type = Type.FLOAT;
+                    type = ColumnType.FLOAT;
                     break;
                 case "DOUBLE":
-                    type = Type.DOUBLE;
+                    type = ColumnType.DOUBLE;
                     break;
                 case "STRING":
-                    type = Type.STRING;
+                    type = ColumnType.STRING;
                     break;
             }
             Column newColumn = new Column(columnAttr[0], type, Integer.parseInt(columnAttr[2]), Boolean.parseBoolean(columnAttr[3]), Integer.parseInt(columnAttr[4]));

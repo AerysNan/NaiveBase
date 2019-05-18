@@ -1,5 +1,5 @@
 package schema;
 
-public enum Type {
+public enum ColumnType {
     INT, LONG, FLOAT, DOUBLE, STRING
 }

@@ -1,7 +1,10 @@
 package schema;
 
 import exception.*;
+import query.JointTable;
+import query.WhereCondition;
 
+import javax.xml.crypto.Data;
 import java.io.*;
 import java.util.HashMap;
 
@@ -125,6 +128,10 @@ public class Manager {
         return sb.toString();
     }
 
+    public String select(String[] columnsProjected, JointTable[] tablesQueried, WhereCondition whereCondition) {
+        return databases.get(current).select(columnsProjected, tablesQueried, whereCondition);
+    }
+
     private void recoverDatabases() {
         File file = new File(persistFileName);
         if (!file.exists())
@@ -161,5 +168,16 @@ public class Manager {
         persistDatabases();
         for (Database d : databases.values())
             d.quit();
+    }
+
+    public JointTable getSingleJointTable(String tableName) {
+        Database database = databases.get(current);
+        if (!database.tables.containsKey(tableName))
+            throw new TableNotExistsException(tableName);
+        return new JointTable(database.tables.get(tableName));
+    }
+
+    public JointTable getMultipleJointTable(String tableName1, String tableName2, WhereCondition whereCondition) {
+        return null;
     }
 }
