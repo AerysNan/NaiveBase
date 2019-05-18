@@ -1,14 +1,19 @@
 package parser;
 
 import exception.ColumnNotFoundException;
+import exception.ValueFormatException;
+import global.LiteralType;
 import javafx.util.Pair;
 import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.RuleNode;
 import org.antlr.v4.runtime.tree.TerminalNode;
+import query.*;
 import schema.Column;
 import schema.Constraint;
 import schema.Manager;
 import schema.Type;
+
+import java.util.StringJoiner;
 
 public class SQLCustomVisitor extends SQLBaseVisitor {
     private Manager manager;
@@ -25,10 +30,10 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
 
     @Override
     public String visitSql_stmt_list(SQLParser.Sql_stmt_listContext ctx) {
-        StringBuilder sb = new StringBuilder();
+        StringJoiner sj = new StringJoiner("\n");
         for (SQLParser.Sql_stmtContext subCtx : ctx.sql_stmt())
-            sb.append(visit(subCtx)).append('\n');
-        return sb.toString();
+            sj.add((String) visit(subCtx));
+        return sj.toString();
     }
 
     @Override
@@ -67,8 +72,8 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     }
 
     @Override
-    public Object visitSelectStatement(SQLParser.SelectStatementContext ctx) {
-        return null;
+    public String visitSelectStatement(SQLParser.SelectStatementContext ctx) {
+        return String.valueOf(visit(ctx.select_stmt()));
     }
 
     @Override
@@ -204,11 +209,6 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     }
 
     @Override
-    public Object visitQuit_stmt(SQLParser.Quit_stmtContext ctx) {
-        return null;
-    }
-
-    @Override
     public String visitShow_table_stmt(SQLParser.Show_table_stmtContext ctx) {
         return manager.showTables(ctx.database_name().getText());
     }
@@ -247,13 +247,32 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     }
 
     @Override
-    public Object visitSelect_stmt(SQLParser.Select_stmtContext ctx) {
-        return null;
+    public String visitSelect_stmt(SQLParser.Select_stmtContext ctx) {
+        // TODO: order by
+        return String.valueOf(visit(ctx.select_core()));
     }
 
     @Override
-    public Object visitSelect_core(SQLParser.Select_coreContext ctx) {
-        return null;
+    public String visitSelect_core(SQLParser.Select_coreContext ctx) {
+        // TODO: distinct / all
+        int columnCount = ctx.result_column().size();
+        String[] columnsProjected = new String[columnCount];
+        for (int i = 0; i < columnCount; i++) {
+            String columnName = ctx.result_column(i).getText();
+            if (columnName.equals("*")) {
+                columnsProjected = null;
+                break;
+            }
+            columnsProjected[i] = columnName;
+        }
+        int queryCount = ctx.table_query().size();
+        QueryTable[] tablesQueried = new QueryTable[queryCount];
+        for (int i = 0; i < columnCount; i++)
+            tablesQueried[i] = (QueryTable) visit(ctx.table_query(i));
+        Condition whereCondition = null;
+        if (ctx.K_WHERE() != null)
+            whereCondition = (Condition) visit(ctx.condition());
+        return manager.select(columnsProjected, tablesQueried, whereCondition);
     }
 
     @Override
@@ -274,6 +293,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
             notNull = notNull || (primary > 0);
         }
         String name = ctx.column_name().getText();
+
         Pair<Type, Integer> type = (Pair<Type, Integer>) visit(ctx.type_name());
         Type columnType = type.getKey();
         int maxLength = type.getValue();
@@ -302,7 +322,12 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
 
     @Override
     public Pair<Type, Integer> visitTypeString(SQLParser.TypeStringContext ctx) {
-        return new Pair<>(Type.STRING, Integer.valueOf(ctx.INTEGER().getText()));
+        try {
+            int a = Integer.parseInt(ctx.NUMERIC_LITERAL().getText());
+            return new Pair<>(Type.STRING, a);
+        } catch (Exception e) {
+            throw new ValueFormatException();
+        }
     }
 
     @Override
@@ -313,6 +338,49 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     @Override
     public Constraint visitNotNullConstraint(SQLParser.NotNullConstraintContext ctx) {
         return Constraint.NOTNULL;
+    }
+
+    @Override
+    public Condition visitCondition(SQLParser.ConditionContext ctx) {
+        Comparer comparer = (Comparer) visit(ctx.comparer(0));
+        Comparer comparee = (Comparer) visit(ctx.comparer(1));
+        ComparatorType type = (ComparatorType) visit(ctx.comparator());
+        return new Condition(comparer, comparee, type);
+    }
+
+    @Override
+    public ComparatorType visitComparator(SQLParser.ComparatorContext ctx) {
+        if (ctx.EQ() != null)
+            return ComparatorType.EQ;
+        if (ctx.NE() != null)
+            return ComparatorType.NE;
+        if (ctx.GT() != null)
+            return ComparatorType.GT;
+        if (ctx.LT() != null)
+            return ComparatorType.LT;
+        if (ctx.GE() != null)
+            return ComparatorType.GE;
+        if (ctx.LE() != null)
+            return ComparatorType.LE;
+        return null;
+    }
+
+    @Override
+    public Comparer visitComparer(SQLParser.ComparerContext ctx) {
+        if (ctx.column_full_name() != null)
+            return new Comparer(ComparerType.COLUMN, ctx.column_full_name().getText());
+        LiteralType type = (LiteralType) visit(ctx.literal_value());
+        String text = ctx.literal_value().getText();
+        switch (type) {
+            case NUMBER:
+                return new Comparer(ComparerType.NUMBER, text);
+            case STRING:
+                return new Comparer(ComparerType.STRING, text.substring(1, text.length() - 1));
+            case NULL:
+                return new Comparer(ComparerType.NULL, null);
+            default:
+                return null;
+        }
     }
 
     @Override
@@ -335,12 +403,21 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     }
 
     @Override
-    public Object visitTable_query(SQLParser.Table_queryContext ctx) {
-        return null;
+    public QueryTable visitTable_query(SQLParser.Table_queryContext ctx) {
+        if (ctx.K_JOIN() == null)
+            return manager.getSingleJointTable(ctx.table_name(0).getText());
+        Condition whereCondition = (Condition) visit(ctx.condition());
+        return manager.getMultipleJointTable(ctx.table_name(0).getText(), ctx.table_name(1).getText(), whereCondition);
     }
 
     @Override
-    public Object visitLiteral_value(SQLParser.Literal_valueContext ctx) {
+    public LiteralType visitLiteral_value(SQLParser.Literal_valueContext ctx) {
+        if (ctx.NUMERIC_LITERAL() != null)
+            return LiteralType.NUMBER;
+        if (ctx.STRING_LITERAL() != null)
+            return LiteralType.STRING;
+        if (ctx.K_NULL() != null)
+            return LiteralType.NULL;
         return null;
     }
 

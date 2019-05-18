@@ -34,7 +34,7 @@ public class Client {
 
     private void write(String message) {
         try {
-            writer.write(message + "--END--");
+            writer.write(message + "\n--END--");
             writer.newLine();
             writer.flush();
         } catch (IOException e) {
@@ -83,9 +83,9 @@ public class Client {
                 if (request.length() == 0) continue;
                 else message = request;
             }
-            client.write(message + "\n");
+            client.write(message.trim());
             String response = client.read();
-            System.out.print(response);
+            System.out.println(response.trim());
             if (response.contains("Quited."))
                 break;
         }

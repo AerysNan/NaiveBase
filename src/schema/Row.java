@@ -3,6 +3,7 @@ package schema;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.StringJoiner;
 
 public class Row implements Serializable {
 
@@ -23,16 +24,16 @@ public class Row implements Serializable {
         return pageID;
     }
 
-    ArrayList<Entry> getEntries() {
+    public ArrayList<Entry> getEntries() {
         return entries;
     }
 
     public String toString() {
         if (entries == null)
             return "EMPTY";
-        StringBuilder sb = new StringBuilder();
+        StringJoiner sj = new StringJoiner(",");
         for (Entry e : entries)
-            sb.append(e.toString()).append(',');
-        return sb.toString();
+            sj.add(e.toString());
+        return sj.toString();
     }
 }

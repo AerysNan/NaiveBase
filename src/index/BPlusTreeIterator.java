@@ -7,7 +7,7 @@ public class BPlusTreeIterator<K extends Comparable<K>, V> implements Iterator<V
     private LinkedList<BPlusTreeNode<K, V>> queue;
     private LinkedList<V> buffer;
 
-    public BPlusTreeIterator(BPlusTree<K, V> tree) {
+    BPlusTreeIterator(BPlusTree<K, V> tree) {
         queue = new LinkedList<>();
         buffer = new LinkedList<>();
         queue.add(tree.root);
