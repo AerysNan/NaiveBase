@@ -1,6 +1,6 @@
 package schema;
 
-public class Column {
+public class Column implements Comparable<Column> {
     String name;
     Type type;
     int primary;
@@ -19,8 +19,22 @@ public class Column {
         return this.name;
     }
 
+    public Type getType() {
+        return this.type;
+    }
+
     public void setPrimary(int primary) {
         this.primary = primary;
+    }
+
+    public int getPrimary() {
+        return this.primary;
+    }
+
+
+    @Override
+    public int compareTo(Column e) {
+        return name.compareTo(e.name);
     }
 
     public String toString() {

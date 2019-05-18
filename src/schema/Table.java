@@ -9,15 +9,18 @@ import java.util.*;
 
 import static global.Global.*;
 
-public class Table {
-    private String databaseName;
-    String tableName;
-    ArrayList<Column> columns;
+public class Table implements Iterable<Row> {
+    public String databaseName;
+    public String tableName;
+    public ArrayList<Column> columns;
+    public BPlusTree<Entry, Row> index;
+    public HashMap<String, TreeMap<Entry, ArrayList<Entry[]>>> secondaryIndexList;
+    private ArrayList<Integer> primaryColumnsIndex;
     private long uid;
-    private transient BPlusTree<Entry, Row> index;
     private boolean hasComposite;
-    private boolean hasUID;
+    public boolean hasUID;
     private HashMap<CompositeKey, Entry> compositeKeyMap;
+
     private HashMap<Integer, Page> pages;
     private HashMap<Integer, Long> times;
     private int pageNum;
@@ -28,19 +31,42 @@ public class Table {
         this.columns = new ArrayList<>(Arrays.asList(columns));
         this.compositeKeyMap = new HashMap<>();
         this.uid = columns[columns.length - 1].name.equals("uid") ? 0 : -1;
-        this.index = new BPlusTree<>();
-        pages = new HashMap<>();
-        times = new HashMap<>();
+        this.primaryColumnsIndex = new ArrayList<>();
         for (Column c : columns) {
             if (c.primary == 2)
                 hasComposite = true;
             if (c.name.equals("uid"))
                 hasUID = true;
         }
+        this.index = new BPlusTree<>();
+        this.secondaryIndexList = new HashMap<>();
+        if (hasComposite) {
+            for (int i = 0; i < columns.length; i++) {
+                if (this.columns.get(i).getPrimary() == 2) {
+                    primaryColumnsIndex.add(i);
+                }
+                if (this.columns.get(i).getPrimary() != 1) {
+                    TreeMap treeMap = new TreeMap<Entry, ArrayList<Entry[]>>();
+                    secondaryIndexList.put(this.columns.get(i).name, treeMap);
+                }
+            }
+        } else {
+            for (int i = 0; i < columns.length; i++) {
+                if (this.columns.get(i).getPrimary() == 1) {
+                    primaryColumnsIndex.add(i);
+                } else {
+                    TreeMap treeMap = new TreeMap<Entry, ArrayList<Entry[]>>();
+                    secondaryIndexList.put(this.columns.get(i).name, treeMap);
+                }
+            }
+        }
+        pages = new HashMap<>();
+        times = new HashMap<>();
         recoverTable();
         allocateNewPage();
     }
 
+    @SuppressWarnings("unchecked")
     private void recoverTable() {
         File path = new File(dataPath);
         File[] files = path.listFiles();
@@ -76,7 +102,8 @@ public class Table {
                         index.put(entry, pages.size() < maxPageNum ? row : new Row(row.getPageID()));
                         page.addRow(row.getEntries().get(i), row.toString().length());
                         maxPage = maxPage < pageID ? pageID : maxPage;
-                        break;
+                    } else {
+                        updateSecondaryIndex(row, i);
                     }
                 }
                 if (hasUID)
@@ -105,7 +132,6 @@ public class Table {
             for (String name : columnNames)
                 if (!hasColumn(name))
                     throw new ColumnMismatchException();
-
         }
         Entry[] entries = new Entry[columns.size()];
 
@@ -117,7 +143,7 @@ public class Table {
                 try {
                     value = parseValue(values[i], i);
                 } catch (Exception e) {
-                    throw new ValueFormatException(column.name);
+                    throw new ValueFormatException();
                 }
             else {
                 boolean found = false;
@@ -126,7 +152,7 @@ public class Table {
                         try {
                             value = parseValue(values[j], i);
                         } catch (Exception e) {
-                            throw new ValueFormatException(column.name);
+                            throw new ValueFormatException();
                         }
                         found = true;
                         break;
@@ -153,10 +179,26 @@ public class Table {
                 pages.get(pageNum).setDirty();
                 if (size >= maxPageSize)
                     allocateNewPage();
-                break;
+            } else {
+                updateSecondaryIndex(row, i);
             }
         }
         times.put(pages.get(pageNum).getID(), System.currentTimeMillis());
+    }
+
+    @SuppressWarnings("unchecked")
+    private void updateSecondaryIndex(Row row, int i) {
+        TreeMap secondaryIndex = secondaryIndexList.get(columns.get(i).getName());
+        ArrayList primaryEntryList = (ArrayList<Entry[]>) (secondaryIndex.get(row.getEntries().get(i)));
+        if (primaryEntryList == null)
+            primaryEntryList = new ArrayList<>();
+        Entry[] primaryEntries = new Entry[primaryColumnsIndex.size()];
+        for (int j = 0; j < primaryColumnsIndex.size(); j++) {
+            primaryEntries[j] = row.getEntries().get(primaryColumnsIndex.get(j));
+        }
+        primaryEntryList.add(primaryEntries);
+        secondaryIndex.put(row.getEntries().get(i), primaryEntryList);
+        secondaryIndexList.put(columns.get(i).name, secondaryIndex);
     }
 
     private boolean hasColumn(String name) {
@@ -193,6 +235,16 @@ public class Table {
         } else
             return row;
     }
+
+    public ArrayList<Row> getBySecondaryIndex(Column column, Entry entry) {
+        ArrayList<Entry[]> primaryIndex = secondaryIndexList.get(column.name).get(entry);
+        ArrayList<Row> result = new ArrayList<>();
+        for (Entry[] entries : primaryIndex) {
+            result.add(get(entries));
+        }
+        return result;
+    }
+
 
     public void delete(Entry[] entries) {
         for (int i = 0; i < columns.size(); i++) {
@@ -239,7 +291,7 @@ public class Table {
         }
     }
 
-    private Object parseValue(String s, int index) {
+    public Object parseValue(String s, int index) {
         if (s.equals("null")) {
             if (columns.get(index).notNull)
                 throw new NullValueException(columns.get(index).name);
@@ -342,5 +394,11 @@ public class Table {
                 }
             }
         }
+    }
+
+
+    @Override
+    public Iterator<Row> iterator() {
+        return index.iterator();
     }
 }

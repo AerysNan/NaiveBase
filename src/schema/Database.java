@@ -4,6 +4,10 @@ import exception.DuplicateFieldException;
 import exception.InternalException;
 import exception.MultiplePrimaryKeyException;
 import exception.TableAlreadyExistsException;
+import query.QueryResult;
+import query.QueryTable;
+import query.SimpleTable;
+import query.WhereCondition;
 
 import java.io.*;
 import java.nio.file.Paths;
@@ -96,6 +100,33 @@ class Database {
         file.delete();
         tables.get(name).deleteAllPage();
         tables.remove(name);
+    }
+
+    String select(String[] columnsProjected, QueryTable[] tablesQueried, WhereCondition whereCondition) {
+        assert tablesQueried.length > 0;
+        StringBuilder result = new StringBuilder();
+        if (tablesQueried.length == 1) {
+            if (tablesQueried[0] instanceof SimpleTable) {
+                QueryResult queryResult = new QueryResult(tables.get((((SimpleTable) tablesQueried[0]).table.tableName)).columns, columnsProjected, tables.get((((SimpleTable) tablesQueried[0]).table.tableName)).hasUID);
+                ((SimpleTable) tablesQueried[0]).setWhereCondition(whereCondition);
+                while (((SimpleTable) tablesQueried[0]).hasNext()) {
+                    Row row = ((SimpleTable) tablesQueried[0]).next();
+                    if (row == null) {
+                        if (result.length() == 0) {
+                            result.append("--EMPTY--");
+                        }
+                        break;
+                    }
+                    result.append(queryResult.generateQueryRecord(row)).append("\n");
+                }
+                return result.toString();
+            } else {
+                return "";
+            }
+        } else {
+            //TODO more table join
+            return "";
+        }
     }
 
     private void recoverDatabase() {

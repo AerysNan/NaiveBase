@@ -1,7 +1,7 @@
 package exception;
 
-public class ColumnNotFoundException extends  RuntimeException {
-    String name;
+public class ColumnNotFoundException extends RuntimeException {
+    private String name;
 
     public ColumnNotFoundException(String name) {
         this.name = name;
