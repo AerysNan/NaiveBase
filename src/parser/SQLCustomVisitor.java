@@ -24,10 +24,9 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
 
     @Override
     public String visitSql_stmt_list(SQLParser.Sql_stmt_listContext ctx) {
-        //TODO: return string can only be one line, must fix.
         StringBuilder sb = new StringBuilder();
         for (SQLParser.Sql_stmtContext subCtx : ctx.sql_stmt())
-            sb.append(visit(subCtx)).append(' ');
+            sb.append(visit(subCtx)).append('\n');
         return sb.toString();
     }
 

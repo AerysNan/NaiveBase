@@ -1,0 +1,7 @@
+create database test;
+use test;
+create table grade
+    (id int, primary key (id));
+insert into grade
+    values (1);
+show databases;
