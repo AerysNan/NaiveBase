@@ -12,7 +12,7 @@ public class Client {
     private Client(String ip, int port) throws IOException {
         Socket writeSocket = new Socket(ip, port);
         writer = new BufferedWriter(new OutputStreamWriter(writeSocket.getOutputStream()));
-        write("localhost 8081");
+        write("localhost 8081\n");
         ServerSocket serverSocket = new ServerSocket(8081);
         Socket readSocket = serverSocket.accept();
         reader = new BufferedReader(new InputStreamReader(readSocket.getInputStream()));
@@ -21,16 +21,20 @@ public class Client {
 
     private String read() {
         try {
-            return reader.readLine();
+            StringBuilder message = new StringBuilder();
+            String s;
+            while (!(s = reader.readLine()).contains("--END--"))
+                message.append(s).append('\n');
+            return message.toString();
         } catch (IOException e) {
-            System.err.println("Failed to read from socket! Error message: " + e.getMessage());
+            System.err.println("Failed to read from server! Error message: " + e.getMessage());
             return "";
         }
     }
 
     private void write(String message) {
         try {
-            writer.write(message);
+            writer.write(message + "--END--");
             writer.newLine();
             writer.flush();
         } catch (IOException e) {
@@ -38,8 +42,31 @@ public class Client {
         }
     }
 
+    private String importSQLText(String command) {
+        String[] data = command.replaceAll(";", "").split(" ");
+        String fileName;
+        if (data.length <= 1) {
+            System.err.println("Failed to parse import command!");
+            return "";
+        }
+        fileName = data[1].trim();
+
+        File file = new File(fileName);
+        StringBuilder message = new StringBuilder();
+        String s;
+        try {
+            BufferedReader lineReader = new BufferedReader(new FileReader(file));
+            while ((s = lineReader.readLine()) != null)
+                message.append(s).append('\n');
+            lineReader.close();
+            return message.toString();
+        } catch (IOException e) {
+            System.err.println("Failed to open sql file! Error message: " + e.getMessage());
+            return "";
+        }
+    }
+
     public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
         Client client = null;
         try {
             client = new Client("localhost", 8080);
@@ -47,15 +74,21 @@ public class Client {
             System.err.println("Failed to start client! Error message: " + e.getMessage());
             System.exit(-1);
         }
+        Scanner sc = new Scanner(System.in);
         while (true) {
             System.out.print(">");
             String message = sc.nextLine();
-            client.write(message);
+            if (message.contains("import")) {
+                String request = client.importSQLText(message);
+                if (request.length() == 0) continue;
+                else message = request;
+            }
+            client.write(message + "\n");
             String response = client.read();
-            if (!response.equals(""))
-                System.out.println(response);
-            if (response.equals("Quited. "))
+            System.out.print(response);
+            if (response.contains("Quited."))
                 break;
         }
+        sc.close();
     }
 }

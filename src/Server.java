@@ -22,16 +22,20 @@ public class Server {
 
     private String read() {
         try {
-            return reader.readLine();
+            StringBuilder message = new StringBuilder();
+            String s;
+            while (!(s = reader.readLine()).contains("--END--"))
+                message.append(s);
+            return message.toString();
         } catch (IOException e) {
-            System.err.println("Failed to read from socket! Error message: " + e.getMessage());
+            System.err.println("Failed to read from client! Error message: " + e.getMessage());
             return "";
         }
     }
 
     private void write(String message) {
         try {
-            writer.write(message);
+            writer.write(message + "--END--");
             writer.newLine();
             writer.flush();
         } catch (IOException e) {
@@ -56,13 +60,12 @@ public class Server {
         }
         while (true) {
             String message = server.read();
-            if (!message.equals(""))
-                System.out.println(message);
+            if (!"".equals(message))
+                System.out.println(message.trim());
             String result = evaluator.evaluate(message);
             server.write(result);
-            if (result.equals("Quited. "))
+            if (result.contains("Quited."))
                 break;
         }
-
     }
 }
