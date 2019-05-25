@@ -1,10 +1,7 @@
 package parser;
 
-<<<<<<< HEAD
 import exception.ColumnNotFoundException;
-=======
 import global.LiteralType;
->>>>>>> enable basic select(WIP)
 import javafx.util.Pair;
 import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.RuleNode;
@@ -14,6 +11,7 @@ import schema.Column;
 import schema.Constraint;
 import schema.Manager;
 import schema.ColumnType;
+import schema.Type;
 
 public class SQLCustomVisitor extends SQLBaseVisitor {
     private Manager manager;
@@ -266,14 +264,13 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
             columnsProjected[i] = columnName;
         }
         int queryCount = ctx.table_query().size();
-        JointTable[] tablesQueried = new JointTable[queryCount];
+        QueryTable[] tablesQueried = new QueryTable[queryCount];
         for (int i = 0; i < columnCount; i++)
-            tablesQueried[i] = (JointTable) visit(ctx.table_query(i));
+            tablesQueried[i] = (QueryTable) visit(ctx.table_query(i));
         WhereCondition whereCondition = null;
         if(ctx.K_WHERE()!=null)
             whereCondition = (WhereCondition) visit(ctx.where_condition());
-        manager.select(columnsProjected, tablesQueried, whereCondition);
-        return null;
+        return manager.select(columnsProjected, tablesQueried, whereCondition);
     }
 
     @Override
@@ -294,10 +291,10 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
             notNull = notNull || (primary > 0);
         }
         String name = ctx.column_name().getText();
-        Pair<ColumnType, Integer> type = (Pair<ColumnType, Integer>) visit(ctx.type_name());
-        ColumnType columnType = type.getKey();
+        Pair<Type, Integer> type = (Pair<Type, Integer>) visit(ctx.type_name());
+        Type Type = type.getKey();
         int maxLength = type.getValue();
-        return new Column(name, columnType, primary, notNull, maxLength);
+        return new Column(name, Type, primary, notNull, maxLength);
     }
 
     @Override
@@ -384,22 +381,12 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     }
 
     @Override
-<<<<<<< HEAD
     public String[] visitTable_constraint(SQLParser.Table_constraintContext ctx) {
         int n = ctx.column_name().size();
         String[] compositeNames = new String[n];
         for (int i = 0; i < n; i++)
             compositeNames[i] = ctx.column_name(i).getText();
         return compositeNames;
-=======
-    public Object visitUnary_operator(SQLParser.Unary_operatorContext ctx) {
-        return null;
-    }
-
-    @Override
-    public String visitTable_constraint(SQLParser.Table_constraintContext ctx) {
-        return ctx.column_name().getText();
->>>>>>> enable basic select(WIP)
     }
 
     @Override
@@ -408,10 +395,10 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     }
 
     @Override
-    public JointTable visitTable_query(SQLParser.Table_queryContext ctx) {
-        if (ctx.K_JOIN() == null)
-            return manager.getSingleJointTable(ctx.table_name(0).getText());
+    public QueryTable visitTable_query(SQLParser.Table_queryContext ctx) {
         WhereCondition whereCondition = (WhereCondition) visit(ctx.where_condition());
+        if (ctx.K_JOIN() == null)
+            return manager.getSingleJointTable(ctx.table_name(0).getText(),whereCondition);
         return manager.getMultipleJointTable(ctx.table_name(0).getText(), ctx.table_name(1).getText(), whereCondition);
     }
 

@@ -23,7 +23,7 @@ public class Row implements Serializable {
         return pageID;
     }
 
-    ArrayList<Entry> getEntries() {
+    public ArrayList<Entry> getEntries() {
         return entries;
     }
 

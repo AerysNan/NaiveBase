@@ -4,7 +4,9 @@ import exception.DuplicateFieldException;
 import exception.InternalException;
 import exception.MultiplePrimaryKeyException;
 import exception.TableAlreadyExistsException;
-import query.JointTable;
+import query.QueryResult;
+import query.QueryTable;
+import query.SimpleTable;
 import query.WhereCondition;
 
 import java.io.*;
@@ -100,8 +102,22 @@ class Database {
         tables.remove(name);
     }
 
-    String select(String[] columnsProjected, JointTable[] tablesQueried, WhereCondition whereCondition){
-        return "";
+    String select(String[] columnsProjected, QueryTable[] tablesQueried, WhereCondition whereCondition){
+        assert tablesQueried.length > 0;
+        StringBuilder result = new StringBuilder();
+        if(tablesQueried.length == 1){
+            if(tablesQueried[0] instanceof SimpleTable){
+                QueryResult queryResult = new QueryResult(tables.get((((SimpleTable)tablesQueried[0]).table.tableName)).columns);
+
+
+            }else{
+
+            }
+            return result.toString();
+        }else{
+            //TODO more table join
+            return "";
+        }
     }
 
     private void recoverDatabase() {
@@ -139,22 +155,22 @@ class Database {
             String[] columnAttr = strColumn.split(",");
             if (columnAttr.length != 5)
                 throw new InternalException("table metadata file corrupted.");
-            ColumnType type = ColumnType.INT;
+            Type type = Type.INT;
             switch (columnAttr[1]) {
                 case "INT":
-                    type = ColumnType.INT;
+                    type = Type.INT;
                     break;
                 case "LONG":
-                    type = ColumnType.LONG;
+                    type = Type.LONG;
                     break;
                 case "FLOAT":
-                    type = ColumnType.FLOAT;
+                    type = Type.FLOAT;
                     break;
                 case "DOUBLE":
-                    type = ColumnType.DOUBLE;
+                    type = Type.DOUBLE;
                     break;
                 case "STRING":
-                    type = ColumnType.STRING;
+                    type = Type.STRING;
                     break;
             }
             Column newColumn = new Column(columnAttr[0], type, Integer.parseInt(columnAttr[2]), Boolean.parseBoolean(columnAttr[3]), Integer.parseInt(columnAttr[4]));

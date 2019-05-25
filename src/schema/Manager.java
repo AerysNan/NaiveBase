@@ -1,10 +1,7 @@
 package schema;
 
 import exception.*;
-import query.JointTable;
-import query.WhereCondition;
-
-import javax.xml.crypto.Data;
+import query.*;
 import java.io.*;
 import java.util.HashMap;
 
@@ -128,7 +125,7 @@ public class Manager {
         return sb.toString();
     }
 
-    public String select(String[] columnsProjected, JointTable[] tablesQueried, WhereCondition whereCondition) {
+    public String select(String[] columnsProjected, QueryTable[] tablesQueried, WhereCondition whereCondition) {
         return databases.get(current).select(columnsProjected, tablesQueried, whereCondition);
     }
 
@@ -170,14 +167,19 @@ public class Manager {
             d.quit();
     }
 
-    public JointTable getSingleJointTable(String tableName) {
+    public SimpleTable getSingleJointTable(String tableName,WhereCondition whereCondition) {
         Database database = databases.get(current);
         if (!database.tables.containsKey(tableName))
             throw new TableNotExistsException(tableName);
-        return new JointTable(database.tables.get(tableName));
+        return new SimpleTable(database.tables.get(tableName),whereCondition);
     }
 
     public JointTable getMultipleJointTable(String tableName1, String tableName2, WhereCondition whereCondition) {
-        return null;
+        Database database = databases.get(current);
+        if (!database.tables.containsKey(tableName1))
+            throw new TableNotExistsException(tableName1);
+        if (!database.tables.containsKey(tableName2))
+            throw new TableNotExistsException(tableName2);
+        return new JointTable(database.tables.get(tableName1),database.tables.get(tableName2),whereCondition);
     }
 }

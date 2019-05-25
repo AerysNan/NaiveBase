@@ -10,14 +10,17 @@ import java.util.*;
 import static global.Global.*;
 
 public class Table implements Iterable<Row> {
-    private String databaseName;
-    String tableName;
-    ArrayList<Column> columns;
+    public String databaseName;
+    public String tableName;
+    public ArrayList<Column> columns;
+    public BPlusTree<Entry, Row> index;
+    public HashMap<Column, TreeMap<Entry, ArrayList<Entry>>> secondaryIndexList;
+    public int primaryIndex;
     private long uid;
-    private transient BPlusTree<Entry, Row> index;
     private boolean hasComposite;
     private boolean hasUID;
     private HashMap<CompositeKey, Entry> compositeKeyMap;
+
     private HashMap<Integer, Page> pages;
     private HashMap<Integer, Long> times;
     private int pageNum;
@@ -29,6 +32,15 @@ public class Table implements Iterable<Row> {
         this.compositeKeyMap = new HashMap<>();
         this.uid = columns[columns.length - 1].name.equals("uid") ? 0 : -1;
         this.index = new BPlusTree<>();
+        this.secondaryIndexList = new HashMap<>();
+        for (int i = 0; i < columns.length; i++) {
+            if (this.columns.get(i).primary > 0) {
+                primaryIndex = i;
+            } else {
+                TreeMap treeMap = new TreeMap<Entry, ArrayList<Entry>>();
+                secondaryIndexList.put(this.columns.get(i), treeMap);
+            }
+        }
         pages = new HashMap<>();
         times = new HashMap<>();
         for (Column c : columns) {
@@ -41,6 +53,7 @@ public class Table implements Iterable<Row> {
         allocateNewPage();
     }
 
+    @SuppressWarnings("unchecked")
     private void recoverTable() {
         File path = new File(dataPath);
         File[] files = path.listFiles();
@@ -76,7 +89,8 @@ public class Table implements Iterable<Row> {
                         index.put(entry, pages.size() < maxPageNum ? row : new Row(row.getPageID()));
                         page.addRow(row.getEntries().get(i), row.toString().length());
                         maxPage = maxPage < pageID ? pageID : maxPage;
-                        break;
+                    } else {
+                        updateSecondaryIndex(row, i);
                     }
                 }
                 if (hasUID)
@@ -105,7 +119,6 @@ public class Table implements Iterable<Row> {
             for (String name : columnNames)
                 if (!hasColumn(name))
                     throw new ColumnMismatchException();
-
         }
         Entry[] entries = new Entry[columns.size()];
 
@@ -134,7 +147,7 @@ public class Table implements Iterable<Row> {
                 if (!found && column.notNull)
                     throw new NullValueException(column.name);
             }
-            if (column.type == ColumnType.STRING && value != null && String.valueOf(value).length() > column.maxLength)
+            if (column.type == Type.STRING && value != null && String.valueOf(value).length() > column.maxLength)
                 throw new StringExceedMaxLengthException(column.name);
             entries[i] = new Entry(i, (Comparable) value);
         }
@@ -153,10 +166,21 @@ public class Table implements Iterable<Row> {
                 pages.get(pageNum).setDirty();
                 if (size >= maxPageSize)
                     allocateNewPage();
-                break;
+            } else {
+                updateSecondaryIndex(row, i);
             }
         }
         times.put(pages.get(pageNum).getID(), System.currentTimeMillis());
+    }
+
+    private void updateSecondaryIndex(Row row, int i) {
+        TreeMap secondaryIndex = secondaryIndexList.get(columns.get(i));
+        ArrayList primaryEntryList = (ArrayList<Entry>) (secondaryIndex.get(row.getEntries().get(i)));
+        if (primaryEntryList == null)
+            primaryEntryList = new ArrayList();
+        primaryEntryList.add(row.getEntries().get(primaryIndex));
+        secondaryIndex.put(row.getEntries().get(i), primaryEntryList);
+        secondaryIndexList.put(columns.get(i), secondaryIndex);
     }
 
     private boolean hasColumn(String name) {
@@ -193,6 +217,7 @@ public class Table implements Iterable<Row> {
         } else
             return row;
     }
+
 
     public void delete(Entry[] entries) {
         for (int i = 0; i < columns.size(); i++) {
@@ -343,6 +368,7 @@ public class Table implements Iterable<Row> {
             }
         }
     }
+
 
     @Override
     public Iterator<Row> iterator() {
