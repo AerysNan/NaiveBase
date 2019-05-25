@@ -3,11 +3,11 @@ package schema;
 public class Column {
     String name;
     Type type;
-    boolean primary;
+    int primary;
     boolean notNull;
     int maxLength;
 
-    public Column(String name, Type type, boolean primary, boolean notNull, int maxLength) {
+    public Column(String name, Type type, int primary, boolean notNull, int maxLength) {
         this.name = name;
         this.type = type;
         this.primary = primary;
@@ -19,7 +19,7 @@ public class Column {
         return this.name;
     }
 
-    public void setPrimary(boolean primary) {
+    public void setPrimary(int primary) {
         this.primary = primary;
     }
 

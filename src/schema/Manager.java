@@ -98,11 +98,11 @@ public class Manager {
         database.tables.get(tableName).insert(values, columnNames);
     }
 
-    public Row get(String tableName, Entry entry) {
+    public Row get(String tableName, Entry[] entries) {
         Database database = databases.get(current);
         if (!database.tables.containsKey(tableName))
             throw new TableNotExistsException(tableName);
-        return database.tables.get(tableName).get(entry);
+        return database.tables.get(tableName).get(entries);
     }
 
     public String showDatabases() {

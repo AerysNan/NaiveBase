@@ -6,24 +6,34 @@ public class Entry implements Comparable<Entry>,Serializable {
 
     private static final long serialVersionUID = -5809782578272943999L;
     int id;
-    Object value;
-    private transient Table table;
+    Comparable value;
 
-    public Entry(int id, Object value) {
+    public Entry(int id, Comparable value) {
         this.id = id;
         this.value = value;
     }
 
-    void setTable(Table table) {
-        this.table = table;
+    @Override
+    public int compareTo(Entry e) {
+        return value.compareTo(e.value);
     }
 
     @Override
-    public int compareTo(Entry e) {
-        return table.compareEntries(this, e);
+    public boolean equals(Object obj) {
+        if (obj == null)
+            return false;
+        if (this.getClass() != obj.getClass())
+            return false;
+        Entry e = (Entry) obj;
+        return value.equals(e.value);
     }
 
     public String toString() {
         return value.toString();
+    }
+
+    @Override
+    public int hashCode() {
+        return value.hashCode();
     }
 }

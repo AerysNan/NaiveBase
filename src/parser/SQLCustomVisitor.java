@@ -1,5 +1,6 @@
 package parser;
 
+import exception.ColumnNotFoundException;
 import javafx.util.Pair;
 import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.RuleNode;
@@ -134,10 +135,30 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
         for (SQLParser.Column_defContext subCtx : ctx.column_def())
             columns[i++] = (Column) visit(subCtx);
         if (ctx.table_constraint() != null) {
-            String primaryName = String.valueOf(visit(ctx.table_constraint()));
-            for (Column c : columns)
-                if (c.getName().equals(primaryName))
-                    c.setPrimary(true);
+            String[] compositeNames = (String[]) visit(ctx.table_constraint());
+            if (compositeNames.length == 1) {
+                boolean found = false;
+                for (Column c : columns) {
+                    if (c.getName().equals(compositeNames[0])) {
+                        c.setPrimary(1);
+                        found = true;
+                    }
+                }
+                if (!found)
+                    throw new ColumnNotFoundException(compositeNames[0]);
+            } else if (compositeNames.length > 1) {
+                for (String compositeName : compositeNames) {
+                    boolean found = false;
+                    for (Column c : columns) {
+                        if (c.getName().equals(compositeName)) {
+                            c.setPrimary(2);
+                            found = true;
+                        }
+                    }
+                    if (!found)
+                        throw new ColumnNotFoundException(compositeName);
+                }
+            }
         }
         try {
             manager.createTable(name, columns);
@@ -243,14 +264,14 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     @Override
     public Column visitColumn_def(SQLParser.Column_defContext ctx) {
         boolean notNull = false;
-        boolean primary = false;
+        int primary = 0;
         for (SQLParser.Column_constraintContext subCtx : ctx.column_constraint()) {
             Constraint constraint = (Constraint) visit(subCtx);
             if (constraint.equals(Constraint.PRIMARY))
-                primary = true;
+                primary = 1;
             else if (constraint.equals(Constraint.NOTNULL))
                 notNull = true;
-            notNull = notNull || primary;
+            notNull = notNull || (primary > 0);
         }
         String name = ctx.column_name().getText();
         Pair<Type, Integer> type = (Pair<Type, Integer>) visit(ctx.type_name());
@@ -300,8 +321,12 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     }
 
     @Override
-    public String visitTable_constraint(SQLParser.Table_constraintContext ctx) {
-        return ctx.column_name().getText();
+    public String[] visitTable_constraint(SQLParser.Table_constraintContext ctx) {
+        int n = ctx.column_name().size();
+        String[] compositeNames = new String[n];
+        for (int i = 0; i < n; i++)
+            compositeNames[i] = ctx.column_name(i).getText();
+        return compositeNames;
     }
 
     @Override
