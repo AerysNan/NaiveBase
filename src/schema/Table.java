@@ -15,7 +15,9 @@ public class Table {
     ArrayList<Column> columns;
     private long uid;
     private transient BPlusTree<Entry, Row> index;
-
+    private boolean hasComposite;
+    private boolean hasUID;
+    private HashMap<CompositeKey, Entry> compositeKeyMap;
     private HashMap<Integer, Page> pages;
     private HashMap<Integer, Long> times;
     private int pageNum;
@@ -24,10 +26,17 @@ public class Table {
         this.databaseName = databaseName;
         this.tableName = tableName;
         this.columns = new ArrayList<>(Arrays.asList(columns));
+        this.compositeKeyMap = new HashMap<>();
         this.uid = columns[columns.length - 1].name.equals("uid") ? 0 : -1;
         this.index = new BPlusTree<>();
         pages = new HashMap<>();
         times = new HashMap<>();
+        for (Column c : columns) {
+            if (c.primary == 2)
+                hasComposite = true;
+            if (c.name.equals("uid"))
+                hasUID = true;
+        }
         recoverTable();
         allocateNewPage();
     }
@@ -40,7 +49,6 @@ public class Table {
         if (files.length == 0)
             return;
         int maxPage = Integer.MIN_VALUE;
-        boolean hasUID = uid >= 0;
         int columnSize = columns.size();
         for (File f : files) {
             String databaseName = f.getName().split("_")[0];
@@ -61,10 +69,10 @@ public class Table {
             int pageID = rows.get(0).getPageID();
             Page page = new Page(databaseName, tableName, pageID);
             for (Row row : rows) {
+                ArrayList<Entry> entries = row.getEntries();
                 for (int i = 0; i < columnSize; i++) {
-                    Entry entry = row.getEntries().get(i);
-                    entry.setTable(this);
-                    if (columns.get(i).primary) {
+                    Entry entry = entries.get(i);
+                    if (columns.get(i).primary == 1) {
                         index.put(entry, pages.size() < maxPageNum ? row : new Row(row.getPageID()));
                         page.addRow(row.getEntries().get(i), row.toString().length());
                         maxPage = maxPage < pageID ? pageID : maxPage;
@@ -72,7 +80,10 @@ public class Table {
                     }
                 }
                 if (hasUID)
-                    uid = Math.max(uid, (Long) (row.getEntries().get(columnSize - 1).value));
+                    uid = Math.max(uid, (Long) (entries.get(columnSize - 1).value));
+                if (hasComposite)
+                    compositeKeyMap.put(getCompositeKey(entries), entries.get(columnSize - 1));
+
             }
             if (pages.size() < maxPageNum)
                 addPage(page);
@@ -97,8 +108,9 @@ public class Table {
 
         }
         Entry[] entries = new Entry[columns.size()];
-        int offset = uid >= 0 ? 1 : 0;
-        for (int i = 0; i < entries.length - offset; i++) {
+
+        int derivativeColumn = hasUID ? 1 : 0;
+        for (int i = 0; i < entries.length - derivativeColumn; i++) {
             Object value = null;
             Column column = columns.get(i);
             if (columnNames == null || columnNames.length == 0)
@@ -124,15 +136,18 @@ public class Table {
             }
             if (column.type == Type.STRING && value != null && String.valueOf(value).length() > column.maxLength)
                 throw new StringExceedMaxLengthException(column.name);
-            entries[i] = new Entry(i, value);
+            entries[i] = new Entry(i, (Comparable) value);
         }
-        if (uid >= 0)
-            entries[entries.length - 1] = new Entry(entries.length - 1, ++uid);
+        if (hasUID) {
+            //FIXME: ensure composite key doesn't collide
+            Entry uidEntry = new Entry(entries.length - 1, ++uid);
+            entries[entries.length - 1] = uidEntry;
+            if (hasComposite)
+                compositeKeyMap.put(getCompositeKey(new ArrayList<>(Arrays.asList(entries))), uidEntry);
+        }
         Row row = new Row(entries, pageNum);
-        for (Entry e : entries)
-            e.setTable(this);
         for (int i = 0; i < entries.length; i++) {
-            if (columns.get(i).primary) {
+            if (columns.get(i).primary == 1) {
                 index.put(row.getEntries().get(i), row);
                 int size = pages.get(pageNum).addRow(row.getEntries().get(i), row.toString().length());
                 pages.get(pageNum).setDirty();
@@ -151,7 +166,23 @@ public class Table {
         return false;
     }
 
-    Row get(Entry entry) {
+    private CompositeKey getCompositeKey(ArrayList<Entry> entries) {
+        ArrayList<Entry> list = new ArrayList<>();
+        int n = entries.size();
+        for (int i = 0; i < n; i++)
+            if (columns.get(i).primary == 2)
+                list.add(entries.get(i));
+        return new CompositeKey(list);
+    }
+
+    Row get(Entry[] entries) {
+        Entry entry;
+        if (entries.length == 1)
+            entry = entries[0];
+        else {
+            CompositeKey compositeKey = getCompositeKey(new ArrayList<>(Arrays.asList(entries)));
+            entry = compositeKeyMap.get(compositeKey);
+        }
         Row row = index.get(entry);
         times.put(row.getPageID(), System.currentTimeMillis());
         if (row.getEntries() == null) {
@@ -159,15 +190,14 @@ public class Table {
                 putLRUPageToDisk();
             getPageFromDisk(row.getPageID());
             return index.get(entry);
-        } else {
+        } else
             return row;
-        }
     }
 
     public void delete(Entry[] entries) {
         for (int i = 0; i < columns.size(); i++) {
-            if (columns.get(i).primary) {
-                Row row = get(entries[i]);
+            if (columns.get(i).primary == 1) {
+                Row row = get(entries);
                 index.remove(row.getEntries().get(i));
                 Entry entry = row.getEntries().get(i);
                 pages.get(row.getPageID()).deleteRow(entry, row.toString().length());
@@ -180,8 +210,8 @@ public class Table {
 
     public void update(Entry[] entries) {
         for (int i = 0; i < columns.size(); i++) {
-            if (columns.get(i).primary) {
-                Row oldRow = get(entries[i]);
+            if (columns.get(i).primary == 1) {
+                Row oldRow = get(entries);
                 int pageID = oldRow.getPageID();
                 Row newRow = new Row(entries, pageID);
                 Entry entry = oldRow.getEntries().get(i);
@@ -207,24 +237,6 @@ public class Table {
             File deleteFile = new File(dataPath + f.getName());
             deleteFile.delete();
         }
-    }
-
-    int compareEntries(Entry e1, Entry e2) {
-        assert e1.id == e2.id;
-        int index = e1.id;
-        switch (columns.get(index).type) {
-            case INT:
-                return ((Integer) e1.value).compareTo((Integer) e2.value);
-            case LONG:
-                return ((Long) e1.value).compareTo((Long) e2.value);
-            case FLOAT:
-                return ((Float) e1.value).compareTo((Float) e2.value);
-            case DOUBLE:
-                return ((Double) e1.value).compareTo((Double) e2.value);
-            case STRING:
-                return ((String) e1.value).compareTo((String) e2.value);
-        }
-        return 0;
     }
 
     private Object parseValue(String s, int index) {
@@ -275,6 +287,8 @@ public class Table {
     private void putLRUPageToDisk() {
         int id = getLRUCachePageID();
         Page page = pages.get(id);
+        if (page == null)
+            return;
         if (page.isDirty()) {
             try {
                 Serialize(page);
@@ -301,10 +315,9 @@ public class Table {
         Page page = new Page(this.databaseName, this.tableName, pageID);
         for (Row row : rows) {
             for (int i = 0; i < columns.size(); i++) {
-                if (columns.get(i).primary) {
+                if (columns.get(i).primary == 1) {
                     Entry entry = row.getEntries().get(i);
                     page.addRow(entry, row.toString().length());
-                    entry.setTable(this);
                     index.update(entry, row);
                     break;
                 }

@@ -95,7 +95,7 @@ unary_operator :
     | '+' ;
 
 table_constraint :
-    K_PRIMARY K_KEY '(' column_name ')' ;
+    K_PRIMARY K_KEY '(' column_name (',' column_name)* ')' ;
 
 result_column
     : '*'

@@ -13,7 +13,7 @@ import java.util.ArrayList;
 
 import static global.Global.*;
 
-public class Database {
+class Database {
     private String dataBaseName;
     HashMap<String, Table> tables;
 
@@ -57,23 +57,27 @@ public class Database {
     void createTable(String tableName, Column[] columns) {
         if (tables.containsKey(tableName))
             throw new TableAlreadyExistsException(tableName);
-        boolean hasPrimary = false;
+        int hasPrimary = 0;
         HashSet<String> nameSet = new HashSet<>();
         for (Column c : columns) {
             if (nameSet.contains(c.name))
                 throw new DuplicateFieldException(tableName);
             nameSet.add(c.name);
-            if (c.primary) {
-                if (hasPrimary)
+            if (c.primary == 1) {
+                if (hasPrimary > 0)
                     throw new MultiplePrimaryKeyException(tableName);
-                hasPrimary = true;
+                hasPrimary = 1;
+            } else if (c.primary == 2) {
+                if (hasPrimary == 1)
+                    throw new MultiplePrimaryKeyException(tableName);
+                hasPrimary = 2;
             }
         }
         Table table;
-        if (hasPrimary)
+        if (hasPrimary == 1)
             table = new Table(dataBaseName, tableName, columns);
         else {
-            Column primaryColumn = new Column("uid", Type.LONG, true, true, -1);
+            Column primaryColumn = new Column("uid", Type.LONG, 1, true, -1);
             Column[] newColumns = new Column[columns.length + 1];
             newColumns[columns.length] = primaryColumn;
             System.arraycopy(columns, 0, newColumns, 0, newColumns.length - 1);
@@ -147,7 +151,7 @@ public class Database {
                     type = Type.STRING;
                     break;
             }
-            Column newColumn = new Column(columnAttr[0], type, Boolean.parseBoolean(columnAttr[2]), Boolean.parseBoolean(columnAttr[3]), Integer.parseInt(columnAttr[4]));
+            Column newColumn = new Column(columnAttr[0], type, Integer.parseInt(columnAttr[2]), Boolean.parseBoolean(columnAttr[3]), Integer.parseInt(columnAttr[4]));
             colArrayList.add(newColumn);
         }
         try {
