@@ -63,7 +63,7 @@ public abstract  class QueryTable {
     public int columnFind(ArrayList<Column> columns, String name){
         int  found = -1;
         for(int i = 0;i < columns.size();i++){
-            if(name == columns.get(i).getName()){
+            if(name.equals(columns.get(i).getName())){
                 found = i;
             }
         }
