@@ -107,9 +107,8 @@ class Database {
         StringBuilder result = new StringBuilder();
         if(tablesQueried.length == 1){
             if(tablesQueried[0] instanceof SimpleTable){
-                QueryResult queryResult = new QueryResult(tables.get((((SimpleTable)tablesQueried[0]).table.tableName)).columns);
-
-
+                QueryResult queryResult = new QueryResult(tables.get((((SimpleTable)tablesQueried[0]).table.tableName)).columns,columnsProjected);
+                result.append(queryResult.figure(((SimpleTable)tablesQueried[0]).figure()));
             }else{
 
             }

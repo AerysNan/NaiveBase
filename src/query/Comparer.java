@@ -20,4 +20,9 @@ public class Comparer {
                 this.value = null;
         }
     }
+
+    public Comparer(Comparer comparer) {
+        this.type = comparer.type;
+        this.value = comparer.value;
+    }
 }

@@ -10,7 +10,6 @@ import query.*;
 import schema.Column;
 import schema.Constraint;
 import schema.Manager;
-import schema.ColumnType;
 import schema.Type;
 
 public class SQLCustomVisitor extends SQLBaseVisitor {
@@ -268,7 +267,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
         for (int i = 0; i < columnCount; i++)
             tablesQueried[i] = (QueryTable) visit(ctx.table_query(i));
         WhereCondition whereCondition = null;
-        if(ctx.K_WHERE()!=null)
+        if (ctx.K_WHERE() != null)
             whereCondition = (WhereCondition) visit(ctx.where_condition());
         return manager.select(columnsProjected, tablesQueried, whereCondition);
     }
@@ -298,28 +297,28 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     }
 
     @Override
-    public Pair<ColumnType, Integer> visitTypeInt(SQLParser.TypeIntContext ctx) {
-        return new Pair<>(ColumnType.INT, -1);
+    public Pair<Type, Integer> visitTypeInt(SQLParser.TypeIntContext ctx) {
+        return new Pair<>(Type.INT, -1);
     }
 
     @Override
-    public Pair<ColumnType, Integer> visitTypeLong(SQLParser.TypeLongContext ctx) {
-        return new Pair<>(ColumnType.LONG, -1);
+    public Pair<Type, Integer> visitTypeLong(SQLParser.TypeLongContext ctx) {
+        return new Pair<>(Type.LONG, -1);
     }
 
     @Override
-    public Pair<ColumnType, Integer> visitTypeFloat(SQLParser.TypeFloatContext ctx) {
-        return new Pair<>(ColumnType.FLOAT, -1);
+    public Pair<Type, Integer> visitTypeFloat(SQLParser.TypeFloatContext ctx) {
+        return new Pair<>(Type.FLOAT, -1);
     }
 
     @Override
-    public Pair<ColumnType, Integer> visitTypeDouble(SQLParser.TypeDoubleContext ctx) {
-        return new Pair<>(ColumnType.DOUBLE, -1);
+    public Pair<Type, Integer> visitTypeDouble(SQLParser.TypeDoubleContext ctx) {
+        return new Pair<>(Type.DOUBLE, -1);
     }
 
     @Override
-    public Pair<ColumnType, Integer> visitTypeString(SQLParser.TypeStringContext ctx) {
-        return new Pair<>(ColumnType.STRING, Integer.valueOf(ctx.INTEGER().getText()));
+    public Pair<Type, Integer> visitTypeString(SQLParser.TypeStringContext ctx) {
+        return new Pair<>(Type.STRING, Integer.valueOf(ctx.INTEGER().getText()));
     }
 
     @Override
@@ -398,7 +397,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     public QueryTable visitTable_query(SQLParser.Table_queryContext ctx) {
         WhereCondition whereCondition = (WhereCondition) visit(ctx.where_condition());
         if (ctx.K_JOIN() == null)
-            return manager.getSingleJointTable(ctx.table_name(0).getText(),whereCondition);
+            return manager.getSingleJointTable(ctx.table_name(0).getText(), whereCondition);
         return manager.getMultipleJointTable(ctx.table_name(0).getText(), ctx.table_name(1).getText(), whereCondition);
     }
 

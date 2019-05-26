@@ -14,8 +14,8 @@ public class Table implements Iterable<Row> {
     public String tableName;
     public ArrayList<Column> columns;
     public BPlusTree<Entry, Row> index;
-    public HashMap<Column, TreeMap<Entry, ArrayList<Entry>>> secondaryIndexList;
-    public int primaryIndex;
+    public HashMap<Column, TreeMap<Entry, ArrayList<Entry[]>>> secondaryIndexList;
+    private ArrayList<Integer> primaryColumnsIndex;
     private long uid;
     private boolean hasComposite;
     private boolean hasUID;
@@ -31,24 +31,37 @@ public class Table implements Iterable<Row> {
         this.columns = new ArrayList<>(Arrays.asList(columns));
         this.compositeKeyMap = new HashMap<>();
         this.uid = columns[columns.length - 1].name.equals("uid") ? 0 : -1;
-        this.index = new BPlusTree<>();
-        this.secondaryIndexList = new HashMap<>();
-        for (int i = 0; i < columns.length; i++) {
-            if (this.columns.get(i).primary > 0) {
-                primaryIndex = i;
-            } else {
-                TreeMap treeMap = new TreeMap<Entry, ArrayList<Entry>>();
-                secondaryIndexList.put(this.columns.get(i), treeMap);
-            }
-        }
-        pages = new HashMap<>();
-        times = new HashMap<>();
+        this.primaryColumnsIndex = new ArrayList<>();
         for (Column c : columns) {
             if (c.primary == 2)
                 hasComposite = true;
             if (c.name.equals("uid"))
                 hasUID = true;
         }
+        this.index = new BPlusTree<>();
+        this.secondaryIndexList = new HashMap<>();
+        if (hasComposite) {
+            for (int i = 0; i < columns.length; i++) {
+                if (this.columns.get(i).getPrimary() == 2) {
+                    primaryColumnsIndex.add(i);
+                }
+                if (this.columns.get(i).getPrimary() != 1) {
+                    TreeMap treeMap = new TreeMap<Entry, ArrayList<Entry[]>>();
+                    secondaryIndexList.put(this.columns.get(i), treeMap);
+                }
+            }
+        } else {
+            for (int i = 0; i < columns.length; i++) {
+                if (this.columns.get(i).getPrimary() == 1) {
+                    primaryColumnsIndex.add(i);
+                } else {
+                    TreeMap treeMap = new TreeMap<Entry, ArrayList<Entry[]>>();
+                    secondaryIndexList.put(this.columns.get(i), treeMap);
+                }
+            }
+        }
+        pages = new HashMap<>();
+        times = new HashMap<>();
         recoverTable();
         allocateNewPage();
     }
@@ -173,12 +186,17 @@ public class Table implements Iterable<Row> {
         times.put(pages.get(pageNum).getID(), System.currentTimeMillis());
     }
 
+    @SuppressWarnings("unchecked")
     private void updateSecondaryIndex(Row row, int i) {
         TreeMap secondaryIndex = secondaryIndexList.get(columns.get(i));
-        ArrayList primaryEntryList = (ArrayList<Entry>) (secondaryIndex.get(row.getEntries().get(i)));
+        ArrayList primaryEntryList = (ArrayList<Entry[]>) (secondaryIndex.get(row.getEntries().get(i)));
         if (primaryEntryList == null)
-            primaryEntryList = new ArrayList();
-        primaryEntryList.add(row.getEntries().get(primaryIndex));
+            primaryEntryList = new ArrayList<>();
+        Entry[] primaryEntries = new Entry[primaryColumnsIndex.size()];
+        for (int j = 0; j < primaryColumnsIndex.size(); j++) {
+            primaryEntries[j] = row.getEntries().get(primaryColumnsIndex.get(j));
+        }
+        primaryEntryList.add(primaryEntries);
         secondaryIndex.put(row.getEntries().get(i), primaryEntryList);
         secondaryIndexList.put(columns.get(i), secondaryIndex);
     }
@@ -216,6 +234,15 @@ public class Table implements Iterable<Row> {
             return index.get(entry);
         } else
             return row;
+    }
+
+    public ArrayList<Row> getBySecondaryIndex(Column column, Entry entry) {
+        ArrayList<Entry[]> primaryIndex = secondaryIndexList.get(column).get(entry);
+        ArrayList<Row> result = new ArrayList<>();
+        for (Entry[] entries : primaryIndex) {
+            result.add(get(entries));
+        }
+        return result;
     }
 
 

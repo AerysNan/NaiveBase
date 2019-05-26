@@ -27,8 +27,8 @@ public class Column implements Comparable<Column> {
         this.primary = primary;
     }
 
-    public boolean isPrimary() {
-        return this.primary > 0;
+    public int getPrimary() {
+        return this.primary;
     }
 
     @Override
