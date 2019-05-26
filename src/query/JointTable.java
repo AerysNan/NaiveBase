@@ -12,7 +12,7 @@ public class JointTable extends QueryTable implements Iterator<Row> {
     private WhereCondition whereCondition;
     private Iterator<Row> iterator1;
 
-    public JointTable(Table table1,Table table2,WhereCondition whereCondition) {
+    public JointTable(Table table1, Table table2, WhereCondition whereCondition) {
         this.table1 = table1;
         this.table2 = table2;
         this.whereCondition = whereCondition;

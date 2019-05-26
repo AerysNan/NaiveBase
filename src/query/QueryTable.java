@@ -60,15 +60,15 @@ public abstract  class QueryTable {
         return false;
     }
 
-    public int columnFind(ArrayList<Column> columns, String name){
-        int  found = -1;
-        for(int i = 0;i < columns.size();i++){
-            if(name.equals(columns.get(i).getName())){
+    public int columnFind(ArrayList<Column> columns, String name) {
+        int found = -1;
+        for (int i = 0; i < columns.size(); i++) {
+            if (name.equals(columns.get(i).getName())) {
                 found = i;
             }
         }
-        if(found == -1)
-            throw  new ColumnNotFoundException(name);
+        if (found == -1)
+            throw new ColumnNotFoundException(name);
         return found;
     }
 }

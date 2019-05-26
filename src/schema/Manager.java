@@ -167,11 +167,11 @@ public class Manager {
             d.quit();
     }
 
-    public SimpleTable getSingleJointTable(String tableName,WhereCondition whereCondition) {
+    public SimpleTable getSingleJointTable(String tableName, WhereCondition whereCondition) {
         Database database = databases.get(current);
         if (!database.tables.containsKey(tableName))
             throw new TableNotExistsException(tableName);
-        return new SimpleTable(database.tables.get(tableName),whereCondition);
+        return new SimpleTable(database.tables.get(tableName), whereCondition);
     }
 
     public JointTable getMultipleJointTable(String tableName1, String tableName2, WhereCondition whereCondition) {
@@ -180,6 +180,6 @@ public class Manager {
             throw new TableNotExistsException(tableName1);
         if (!database.tables.containsKey(tableName2))
             throw new TableNotExistsException(tableName2);
-        return new JointTable(database.tables.get(tableName1),database.tables.get(tableName2),whereCondition);
+        return new JointTable(database.tables.get(tableName1), database.tables.get(tableName2), whereCondition);
     }
 }

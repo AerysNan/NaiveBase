@@ -102,18 +102,18 @@ class Database {
         tables.remove(name);
     }
 
-    String select(String[] columnsProjected, QueryTable[] tablesQueried, WhereCondition whereCondition){
+    String select(String[] columnsProjected, QueryTable[] tablesQueried, WhereCondition whereCondition) {
         assert tablesQueried.length > 0;
         StringBuilder result = new StringBuilder();
-        if(tablesQueried.length == 1){
-            if(tablesQueried[0] instanceof SimpleTable){
-                QueryResult queryResult = new QueryResult(tables.get((((SimpleTable)tablesQueried[0]).table.tableName)).columns,columnsProjected);
-                result.append(queryResult.figure(((SimpleTable)tablesQueried[0]).figure()));
-            }else{
+        if (tablesQueried.length == 1) {
+            if (tablesQueried[0] instanceof SimpleTable) {
+                QueryResult queryResult = new QueryResult(tables.get((((SimpleTable) tablesQueried[0]).table.tableName)).columns, columnsProjected);
+                result.append(queryResult.figure(((SimpleTable) tablesQueried[0]).figure()));
+            } else {
 
             }
             return result.toString();
-        }else{
+        } else {
             //TODO more table join
             return "";
         }
