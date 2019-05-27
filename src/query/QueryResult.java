@@ -37,8 +37,9 @@ public class QueryResult implements Iterator<QueryResult.QueryRecord> {
     ArrayList<Integer> index;
     String[] selectProjects;
     int queryResultNum;
+    boolean hasUID;
 
-    public QueryResult(ArrayList<Column> header, String[] selectProjects) {
+    public QueryResult(ArrayList<Column> header, String[] selectProjects, boolean hasUID) {
         this.header = header;
         this.selectProjects = selectProjects;
         this.queryResultNum = 0;
@@ -56,7 +57,7 @@ public class QueryResult implements Iterator<QueryResult.QueryRecord> {
 
 
     public QueryRecord generateQueryRecord(Row row) {
-        QueryRecord record = new QueryRecord(queryResultNum++);
+        QueryRecord record = new QueryRecord(++queryResultNum);
         if (index == null) {
             for (Entry entry : row.getEntries()) {
                 record.add(entry);

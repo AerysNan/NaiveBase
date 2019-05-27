@@ -1,6 +1,8 @@
 package parser;
 
 import exception.ColumnNotFoundException;
+import exception.InternalException;
+import exception.ValueFormatException;
 import global.LiteralType;
 import javafx.util.Pair;
 import org.antlr.v4.runtime.tree.ErrorNode;
@@ -290,6 +292,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
             notNull = notNull || (primary > 0);
         }
         String name = ctx.column_name().getText();
+
         Pair<Type, Integer> type = (Pair<Type, Integer>) visit(ctx.type_name());
         Type Type = type.getKey();
         int maxLength = type.getValue();
@@ -318,7 +321,12 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
 
     @Override
     public Pair<Type, Integer> visitTypeString(SQLParser.TypeStringContext ctx) {
-        return new Pair<>(Type.STRING, Integer.valueOf(ctx.INTEGER().getText()));
+        try {
+            int a = Integer.parseInt(ctx.NUMERIC_LITERAL().getText());
+            return new Pair<>(Type.STRING, a);
+        } catch (Exception e) {
+            throw new ValueFormatException();
+        }
     }
 
     @Override
@@ -395,9 +403,9 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
 
     @Override
     public QueryTable visitTable_query(SQLParser.Table_queryContext ctx) {
-        WhereCondition whereCondition = (WhereCondition) visit(ctx.where_condition());
         if (ctx.K_JOIN() == null)
-            return manager.getSingleJointTable(ctx.table_name(0).getText(), whereCondition);
+            return manager.getSingleJointTable(ctx.table_name(0).getText());
+        WhereCondition whereCondition = (WhereCondition) visit(ctx.where_condition());
         return manager.getMultipleJointTable(ctx.table_name(0).getText(), ctx.table_name(1).getText(), whereCondition);
     }
 

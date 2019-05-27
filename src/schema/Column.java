@@ -31,6 +31,7 @@ public class Column implements Comparable<Column> {
         return this.primary;
     }
 
+
     @Override
     public int compareTo(Column e) {
         return name.compareTo(e.name);

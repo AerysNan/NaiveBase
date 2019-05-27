@@ -35,7 +35,7 @@ public class Server {
 
     private void write(String message) {
         try {
-            writer.write(message + "--END--");
+            writer.write(message + "\n--END--");
             writer.newLine();
             writer.flush();
         } catch (IOException e) {
@@ -63,7 +63,7 @@ public class Server {
             if (!"".equals(message))
                 System.out.println(message.trim());
             String result = evaluator.evaluate(message);
-            server.write(result);
+            server.write(result.trim());
             if (result.contains("Quited."))
                 break;
         }

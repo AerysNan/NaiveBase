@@ -74,11 +74,11 @@ column_def :
     column_name type_name column_constraint* ;
 
 type_name :
-    T_INT                      # typeInt
-    | T_LONG                   # typeLong
-    | T_FLOAT                  # typeFloat
-    | T_DOUBLE                 # typeDouble
-    | T_STRING '(' INTEGER ')' # typeString ;
+    T_INT                              # typeInt
+    | T_LONG                           # typeLong
+    | T_FLOAT                          # typeFloat
+    | T_DOUBLE                         # typeDouble
+    | T_STRING '(' NUMERIC_LITERAL ')' # typeString ;
 
 column_constraint :
     K_PRIMARY K_KEY     # primaryKeyConstraint
@@ -193,12 +193,9 @@ IDENTIFIER :
     | [a-zA-Z_] [a-zA-Z_0-9]* ;
 
 NUMERIC_LITERAL :
-    INTEGER EXPONENT?
+    DIGIT+ EXPONENT?
     | DIGIT+ '.' DIGIT* EXPONENT?
     | '.' DIGIT+ EXPONENT? ;
-
-INTEGER :
-    DIGIT+ ;
 
 EXPONENT :
     E [-+]? DIGIT+ ;

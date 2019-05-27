@@ -33,6 +33,6 @@ public class Row implements Serializable {
         StringBuilder sb = new StringBuilder();
         for (Entry e : entries)
             sb.append(e.toString()).append(',');
-        return sb.toString();
+        return sb.replace(sb.length() - 1, sb.length(), "").toString();
     }
 }

@@ -33,7 +33,9 @@ public abstract  class QueryTable {
                 }
             case NUMBER:
                 if (whereCondition.comparee.type.equals(ComparerType.NUMBER)) {
-                    int result = ((Double) whereCondition.comparer.value).compareTo((Double) whereCondition.comparee.value);
+                    Double comparer = (Double.parseDouble(String.valueOf(whereCondition.comparer.value)));
+                    Double comparee = (Double.parseDouble(String.valueOf(whereCondition.comparee.value)));
+                    int result = comparer.compareTo(comparee);
                     return comparatorTypeCheck(whereCondition.type, result);
                 } else {
                     throw new NumberCompareNotNumberException();

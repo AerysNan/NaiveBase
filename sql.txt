@@ -1,8 +1,17 @@
 create database test;
 use test;
 create table grade (
-  id int, 
+  id int,
+  name string(10),
+  score double,
   primary key (id)
 );
-insert into grade values (1);
 show databases;
+insert into grade values(1,"aaa",99.0);
+insert into grade values(2,"bbb",98.0);
+insert into grade values(3,"ccc",97.0);
+insert into grade values(4,"ccc",96.0);
+insert into grade values(5,"eee",95.0);
+insert into grade values(6,"fff",94.0);
+insert into grade values(7,"ggg",93.0);
+select * from grade where score > id;

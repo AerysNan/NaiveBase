@@ -14,11 +14,11 @@ public class Table implements Iterable<Row> {
     public String tableName;
     public ArrayList<Column> columns;
     public BPlusTree<Entry, Row> index;
-    public HashMap<Column, TreeMap<Entry, ArrayList<Entry[]>>> secondaryIndexList;
+    public HashMap<String, TreeMap<Entry, ArrayList<Entry[]>>> secondaryIndexList;
     private ArrayList<Integer> primaryColumnsIndex;
     private long uid;
     private boolean hasComposite;
-    private boolean hasUID;
+    public boolean hasUID;
     private HashMap<CompositeKey, Entry> compositeKeyMap;
 
     private HashMap<Integer, Page> pages;
@@ -47,7 +47,7 @@ public class Table implements Iterable<Row> {
                 }
                 if (this.columns.get(i).getPrimary() != 1) {
                     TreeMap treeMap = new TreeMap<Entry, ArrayList<Entry[]>>();
-                    secondaryIndexList.put(this.columns.get(i), treeMap);
+                    secondaryIndexList.put(this.columns.get(i).name, treeMap);
                 }
             }
         } else {
@@ -56,7 +56,7 @@ public class Table implements Iterable<Row> {
                     primaryColumnsIndex.add(i);
                 } else {
                     TreeMap treeMap = new TreeMap<Entry, ArrayList<Entry[]>>();
-                    secondaryIndexList.put(this.columns.get(i), treeMap);
+                    secondaryIndexList.put(this.columns.get(i).name, treeMap);
                 }
             }
         }
@@ -143,7 +143,7 @@ public class Table implements Iterable<Row> {
                 try {
                     value = parseValue(values[i], i);
                 } catch (Exception e) {
-                    throw new ValueFormatException(column.name);
+                    throw new ValueFormatException();
                 }
             else {
                 boolean found = false;
@@ -152,7 +152,7 @@ public class Table implements Iterable<Row> {
                         try {
                             value = parseValue(values[j], i);
                         } catch (Exception e) {
-                            throw new ValueFormatException(column.name);
+                            throw new ValueFormatException();
                         }
                         found = true;
                         break;
@@ -188,7 +188,7 @@ public class Table implements Iterable<Row> {
 
     @SuppressWarnings("unchecked")
     private void updateSecondaryIndex(Row row, int i) {
-        TreeMap secondaryIndex = secondaryIndexList.get(columns.get(i));
+        TreeMap secondaryIndex = secondaryIndexList.get(columns.get(i).getName());
         ArrayList primaryEntryList = (ArrayList<Entry[]>) (secondaryIndex.get(row.getEntries().get(i)));
         if (primaryEntryList == null)
             primaryEntryList = new ArrayList<>();
@@ -198,7 +198,7 @@ public class Table implements Iterable<Row> {
         }
         primaryEntryList.add(primaryEntries);
         secondaryIndex.put(row.getEntries().get(i), primaryEntryList);
-        secondaryIndexList.put(columns.get(i), secondaryIndex);
+        secondaryIndexList.put(columns.get(i).name, secondaryIndex);
     }
 
     private boolean hasColumn(String name) {
@@ -237,7 +237,7 @@ public class Table implements Iterable<Row> {
     }
 
     public ArrayList<Row> getBySecondaryIndex(Column column, Entry entry) {
-        ArrayList<Entry[]> primaryIndex = secondaryIndexList.get(column).get(entry);
+        ArrayList<Entry[]> primaryIndex = secondaryIndexList.get(column.name).get(entry);
         ArrayList<Row> result = new ArrayList<>();
         for (Entry[] entries : primaryIndex) {
             result.add(get(entries));
@@ -291,7 +291,7 @@ public class Table implements Iterable<Row> {
         }
     }
 
-    private Object parseValue(String s, int index) {
+    public Object parseValue(String s, int index) {
         if (s.equals("null")) {
             if (columns.get(index).notNull)
                 throw new NullValueException(columns.get(index).name);
