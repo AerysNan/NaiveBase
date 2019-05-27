@@ -125,8 +125,6 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
                         Row row = next();
                         if (row.getEntries().get(index).compareTo(new Entry(index, (Comparable) table.parseValue(String.valueOf(whereCondition.comparee.value), index))) > 0)
                             rowList.add(row);
-                        else
-                            break;
                     }
                     break;
                 }
@@ -135,8 +133,6 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
                         Row row = next();
                         if (row.getEntries().get(index).compareTo(new Entry(index, (Comparable) table.parseValue(String.valueOf(whereCondition.comparee.value), index))) >= 0)
                             rowList.add(row);
-                        else
-                            break;
                     }
                     break;
                 }
