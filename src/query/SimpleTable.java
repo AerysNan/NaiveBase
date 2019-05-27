@@ -10,30 +10,33 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
     public Table table;
     private WhereCondition whereCondition;
     private Iterator<Row> iterator;
+    private LinkedList<Row> queue;
     private LinkedList<Row> buffer;
 
     public SimpleTable(Table table) {
         this.table = table;
         this.iterator = table.iterator();
         this.buffer = new LinkedList<>();
+        this.queue = new LinkedList<>();
     }
 
     public void setWhereCondition(WhereCondition whereCondition) {
         this.whereCondition = whereCondition;
     }
 
-    public ArrayList<Row> figure() {
-        ArrayList<Row> rowList = new ArrayList<>();
+    public void figure() {
         if (whereCondition == null) {
-            while (hasNext()) {
-                rowList.add(next());
+            while (iterator.hasNext()) {
+                queue.add(iterator.next());
+                break;
             }
         } else {
             if (!(whereCondition.comparer.type.equals(ComparerType.COLUMN) || whereCondition.comparee.type.equals(ComparerType.COLUMN))) {
                 boolean result = staticTypeCheck(whereCondition);
                 if (result) {
-                    while (hasNext()) {
-                        rowList.add(next());
+                    while (iterator.hasNext()) {
+                        queue.add(iterator.next());
+                        break;
                     }
                 }
             } else if (whereCondition.comparer.type.equals(ComparerType.COLUMN) && whereCondition.comparee.type.equals(ComparerType.COLUMN)) {
@@ -47,8 +50,8 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
                         table.columns.get(foundComparee).getType().equals(Type.STRING)) {
                     throw new NumberCompareNotNumberException();
                 }
-                while (hasNext()) {
-                    Row row = next();
+                while (iterator.hasNext()) {
+                    Row row = iterator.next();
                     int result;
                     if (table.columns.get(foundComparer).getType().equals(Type.STRING))
                         result = (row.getEntries().get(foundComparer)).compareTo(row.getEntries().get(foundComparee));
@@ -59,12 +62,13 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
                     }
                     boolean right = comparatorTypeCheck(whereCondition.type, result);
                     if (right) {
-                        rowList.add(row);
+                        queue.add(row);
+                        break;
                     }
                 }
             } else {
                 if (whereCondition.comparer.type.equals(ComparerType.COLUMN)) {
-                    rowList.addAll(getRowsFromColumnCompare(table, whereCondition));
+                    queue.addAll(getRowsFromColumnCompare(table, whereCondition));
                 } else {
                     Comparer newComparer = new Comparer(whereCondition.comparee);
                     Comparer newComparee = new Comparer(whereCondition.comparer);
@@ -78,11 +82,10 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
                         whereCondition.type = ComparatorType.GT;
                     }
                     WhereCondition newWhereCondition = new WhereCondition(newComparer, newComparee, whereCondition.type);
-                    rowList.addAll(getRowsFromColumnCompare(table, newWhereCondition));
+                    queue.addAll(getRowsFromColumnCompare(table, newWhereCondition));
                 }
             }
         }
-        return rowList;
     }
 
 
@@ -97,40 +100,40 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
                     break;
                 }
                 case NE: {
-                    while (hasNext()) {
-                        Row row = next();
+                    while (iterator.hasNext()) {
+                        Row row = iterator.next();
                         if (row.getEntries().get(index).compareTo(new Entry(index, (Comparable) table.parseValue(String.valueOf(whereCondition.comparee.value), index))) != 0)
                             rowList.add(row);
                     }
                     break;
                 }
                 case LT: {
-                    while (hasNext()) {
-                        Row row = next();
+                    while (iterator.hasNext()) {
+                        Row row = iterator.next();
                         if (row.getEntries().get(index).compareTo(new Entry(index, (Comparable) table.parseValue(String.valueOf(whereCondition.comparee.value), index))) < 0)
                             rowList.add(row);
                     }
                     break;
                 }
                 case LE: {
-                    while (hasNext()) {
-                        Row row = next();
+                    while (iterator.hasNext()) {
+                        Row row = iterator.next();
                         if (row.getEntries().get(index).compareTo(new Entry(index, (Comparable) table.parseValue(String.valueOf(whereCondition.comparee.value), index))) <= 0)
                             rowList.add(row);
                     }
                     break;
                 }
                 case GT: {
-                    while (hasNext()) {
-                        Row row = next();
+                    while (iterator.hasNext()) {
+                        Row row = iterator.next();
                         if (row.getEntries().get(index).compareTo(new Entry(index, (Comparable) table.parseValue(String.valueOf(whereCondition.comparee.value), index))) > 0)
                             rowList.add(row);
                     }
                     break;
                 }
                 case GE: {
-                    while (hasNext()) {
-                        Row row = next();
+                    while (iterator.hasNext()) {
+                        Row row = iterator.next();
                         if (row.getEntries().get(index).compareTo(new Entry(index, (Comparable) table.parseValue(String.valueOf(whereCondition.comparee.value), index))) >= 0)
                             rowList.add(row);
                     }
@@ -145,8 +148,8 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
                     break;
                 }
                 case NE: {
-                    while (hasNext()) {
-                        Row row = next();
+                    while (iterator.hasNext()) {
+                        Row row = iterator.next();
                         if (row.getEntries().get(index).compareTo(new Entry(index, (Comparable) table.parseValue(String.valueOf(whereCondition.comparee.value), index))) != 0) {
                             ArrayList<Row> rows = table.getBySecondaryIndex(table.columns.get(index), row.getEntries().get(index));
                             rowList.addAll(rows);
@@ -198,11 +201,17 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
 
     @Override
     public boolean hasNext() {
-        return iterator.hasNext();
+        return !buffer.isEmpty() || !queue.isEmpty();
     }
 
     @Override
     public Row next() {
-        return iterator.next();
+        if (buffer.isEmpty()) {
+            while (!queue.isEmpty()) {
+                buffer.add(queue.poll());
+            }
+            figure();
+        }
+        return buffer.poll();
     }
 }
