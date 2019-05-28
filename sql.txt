@@ -14,4 +14,4 @@ insert into grade values(4,"ccc",96.0);
 insert into grade values(5,"eee",95.0);
 insert into grade values(6,"fff",94.0);
 insert into grade values(7,"ggg",93.0);
-select id from grade where score >= 95;
+select * from grade where id <> 93;

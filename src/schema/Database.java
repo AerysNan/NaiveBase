@@ -104,14 +104,22 @@ class Database {
 
     String select(String[] columnsProjected, QueryTable[] tablesQueried, WhereCondition whereCondition) {
         assert tablesQueried.length > 0;
+        StringBuilder result = new StringBuilder();
         if (tablesQueried.length == 1) {
             if (tablesQueried[0] instanceof SimpleTable) {
                 QueryResult queryResult = new QueryResult(tables.get((((SimpleTable) tablesQueried[0]).table.tableName)).columns, columnsProjected, tables.get((((SimpleTable) tablesQueried[0]).table.tableName)).hasUID);
                 ((SimpleTable) tablesQueried[0]).setWhereCondition(whereCondition);
-                if (((SimpleTable) tablesQueried[0]).hasNext()) {
-                    return queryResult.generateQueryRecord(((SimpleTable) tablesQueried[0]).next());
+                while (((SimpleTable) tablesQueried[0]).hasNext()) {
+                    Row row = ((SimpleTable) tablesQueried[0]).next();
+                    if (row == null) {
+                        if (result.length() == 0) {
+                            result.append("--EMPTY--");
+                        }
+                        break;
+                    }
+                    result.append(queryResult.generateQueryRecord(row)).append("\n");
                 }
-                return "";
+                return result.toString();
             } else {
                 return "";
             }

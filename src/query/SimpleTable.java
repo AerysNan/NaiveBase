@@ -12,12 +12,15 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
     private Iterator<Row> iterator;
     private LinkedList<Row> queue;
     private LinkedList<Row> buffer;
+    private Iterator<ArrayList<Row>> mapIterator;
+    private boolean isFirst;
 
     public SimpleTable(Table table) {
         this.table = table;
         this.iterator = table.iterator();
         this.buffer = new LinkedList<>();
         this.queue = new LinkedList<>();
+        this.isFirst = true;
     }
 
     public void setWhereCondition(WhereCondition whereCondition) {
@@ -68,7 +71,7 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
                 }
             } else {
                 if (whereCondition.comparer.type.equals(ComparerType.COLUMN)) {
-                    queue.addAll(getRowsFromColumnCompare(table, whereCondition));
+                    getRowsFromColumnCompare(table, whereCondition);
                 } else {
                     Comparer newComparer = new Comparer(whereCondition.comparee);
                     Comparer newComparee = new Comparer(whereCondition.comparer);
@@ -82,60 +85,71 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
                         whereCondition.type = ComparatorType.GT;
                     }
                     WhereCondition newWhereCondition = new WhereCondition(newComparer, newComparee, whereCondition.type);
-                    queue.addAll(getRowsFromColumnCompare(table, newWhereCondition));
+                    getRowsFromColumnCompare(table, newWhereCondition);
                 }
             }
         }
     }
 
 
-    public ArrayList<Row> getRowsFromColumnCompare(Table table, WhereCondition whereCondition) {
-        ArrayList<Row> rowList = new ArrayList<>();
+    public void getRowsFromColumnCompare(Table table, WhereCondition whereCondition) {
         int index = columnFind(table.columns, (String) whereCondition.comparer.value);
         if (table.columns.get(index).getPrimary() == 1) {
             switch (whereCondition.type) {
                 case EQ: {
-                    Row row = table.index.get(new Entry(index, (Comparable) table.parseValue(String.valueOf(whereCondition.comparee.value), index)));
-                    rowList.add(row);
+                    if (isFirst) {
+                        Row row = table.index.get(new Entry(index, (Comparable) table.parseValue(String.valueOf(whereCondition.comparee.value), index)));
+                        queue.add(row);
+                    }
                     break;
                 }
                 case NE: {
                     while (iterator.hasNext()) {
                         Row row = iterator.next();
-                        if (row.getEntries().get(index).compareTo(new Entry(index, (Comparable) table.parseValue(String.valueOf(whereCondition.comparee.value), index))) != 0)
-                            rowList.add(row);
+                        if (row.getEntries().get(index).compareTo(new Entry(index, (Comparable) table.parseValue(String.valueOf(whereCondition.comparee.value), index))) != 0) {
+                            queue.add(row);
+                            break;
+                        }
                     }
                     break;
                 }
                 case LT: {
                     while (iterator.hasNext()) {
                         Row row = iterator.next();
-                        if (row.getEntries().get(index).compareTo(new Entry(index, (Comparable) table.parseValue(String.valueOf(whereCondition.comparee.value), index))) < 0)
-                            rowList.add(row);
+                        if (row.getEntries().get(index).compareTo(new Entry(index, (Comparable) table.parseValue(String.valueOf(whereCondition.comparee.value), index))) < 0) {
+                            queue.add(row);
+                            break;
+                        }
                     }
                     break;
                 }
                 case LE: {
                     while (iterator.hasNext()) {
                         Row row = iterator.next();
-                        if (row.getEntries().get(index).compareTo(new Entry(index, (Comparable) table.parseValue(String.valueOf(whereCondition.comparee.value), index))) <= 0)
-                            rowList.add(row);
+                        if (row.getEntries().get(index).compareTo(new Entry(index, (Comparable) table.parseValue(String.valueOf(whereCondition.comparee.value), index))) <= 0) {
+                            queue.add(row);
+                            break;
+                        }
                     }
                     break;
                 }
                 case GT: {
                     while (iterator.hasNext()) {
                         Row row = iterator.next();
-                        if (row.getEntries().get(index).compareTo(new Entry(index, (Comparable) table.parseValue(String.valueOf(whereCondition.comparee.value), index))) > 0)
-                            rowList.add(row);
+                        if (row.getEntries().get(index).compareTo(new Entry(index, (Comparable) table.parseValue(String.valueOf(whereCondition.comparee.value), index))) > 0) {
+                            queue.add(row);
+                            break;
+                        }
                     }
                     break;
                 }
                 case GE: {
                     while (iterator.hasNext()) {
                         Row row = iterator.next();
-                        if (row.getEntries().get(index).compareTo(new Entry(index, (Comparable) table.parseValue(String.valueOf(whereCondition.comparee.value), index))) >= 0)
-                            rowList.add(row);
+                        if (row.getEntries().get(index).compareTo(new Entry(index, (Comparable) table.parseValue(String.valueOf(whereCondition.comparee.value), index))) >= 0) {
+                            queue.add(row);
+                            break;
+                        }
                     }
                     break;
                 }
@@ -143,8 +157,10 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
         } else
             switch (whereCondition.type) {
                 case EQ: {
-                    ArrayList<Row> rows = table.getBySecondaryIndex(table.columns.get(index), new Entry(index, (Comparable) table.parseValue(String.valueOf(whereCondition.comparee.value), index)));
-                    rowList.addAll(rows);
+                    if (isFirst) {
+                        ArrayList<Row> rows = table.getBySecondaryIndex(table.columns.get(index), new Entry(index, (Comparable) table.parseValue(String.valueOf(whereCondition.comparee.value), index)));
+                        queue.addAll(rows);
+                    }
                     break;
                 }
                 case NE: {
@@ -152,65 +168,81 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
                         Row row = iterator.next();
                         if (row.getEntries().get(index).compareTo(new Entry(index, (Comparable) table.parseValue(String.valueOf(whereCondition.comparee.value), index))) != 0) {
                             ArrayList<Row> rows = table.getBySecondaryIndex(table.columns.get(index), row.getEntries().get(index));
-                            rowList.addAll(rows);
+                            queue.addAll(rows);
                         }
                     }
                     break;
                 }
                 case LT: {
                     SortedMap secondaryIndex = table.secondaryIndexList.get(table.columns.get(index).getName()).headMap(new Entry(index, (Comparable) table.parseValue(String.valueOf(whereCondition.comparee.value), index)));
-                    rowList.addAll(getRowsFromSortedMap(secondaryIndex, index));
+                    if (this.mapIterator == null)
+                        this.mapIterator = secondaryIndex.entrySet().iterator();
+                    getRowsFromSortedMap(secondaryIndex, index);
                     break;
                 }
                 case LE: {
                     SortedMap secondaryIndex = table.secondaryIndexList.get(table.columns.get(index).getName()).headMap(new Entry(index, (Comparable) table.parseValue(String.valueOf(whereCondition.comparee.value), index)));
-                    rowList.addAll(getRowsFromSortedMap(secondaryIndex, index));
-                    ArrayList<Row> rows = table.getBySecondaryIndex(table.columns.get(index), new Entry(index, (Comparable) table.parseValue(String.valueOf(whereCondition.comparee.value), index)));
-                    rowList.addAll(rows);
+                    if (this.mapIterator == null)
+                        this.mapIterator = secondaryIndex.entrySet().iterator();
+                    if (mapIterator.hasNext()) {
+                        getRowsFromSortedMap(secondaryIndex, index);
+                    } else {
+                        ArrayList<Row> rows = table.getBySecondaryIndex(table.columns.get(index), new Entry(index, (Comparable) table.parseValue(String.valueOf(whereCondition.comparee.value), index)));
+                        queue.addAll(rows);
+                    }
                     break;
                 }
                 case GT: {
                     SortedMap secondaryIndex = table.secondaryIndexList.get(table.columns.get(index).getName()).tailMap(new Entry(index, (Comparable) table.parseValue(String.valueOf(whereCondition.comparee.value), index)));
                     if (secondaryIndex.size() != 0)
                         secondaryIndex.remove(new Entry(index, (Comparable) table.parseValue(String.valueOf(whereCondition.comparee.value), index)));
-                    rowList.addAll(getRowsFromSortedMap(secondaryIndex, index));
+                    if (this.mapIterator == null)
+                        this.mapIterator = secondaryIndex.entrySet().iterator();
+                    getRowsFromSortedMap(secondaryIndex, index);
                     break;
                 }
                 case GE: {
                     SortedMap secondaryIndex = table.secondaryIndexList.get(table.columns.get(index).getName()).tailMap(new Entry(index, (Comparable) table.parseValue(String.valueOf(whereCondition.comparee.value), index)));
-                    rowList.addAll(getRowsFromSortedMap(secondaryIndex, index));
+                    if (this.mapIterator == null)
+                        this.mapIterator = secondaryIndex.entrySet().iterator();
+                    getRowsFromSortedMap(secondaryIndex, index);
                     break;
                 }
             }
-        return rowList;
     }
 
-    public ArrayList<Row> getRowsFromSortedMap(SortedMap sortedMap, int index) {
-        ArrayList<Row> result = new ArrayList<>();
+    public void getRowsFromSortedMap(SortedMap sortedMap, int index) {
         if (sortedMap.size() == 0)
-            return result;
-        Iterator s = sortedMap.entrySet().iterator();
-        while (s.hasNext()) {
-            Map.Entry pair = (Map.Entry) s.next();
+            return;
+
+        while (mapIterator.hasNext()) {
+            Map.Entry pair = (Map.Entry) mapIterator.next();
             ArrayList<Row> rows = table.getBySecondaryIndex(table.columns.get(index), (Entry) pair.getKey());
-            result.addAll(rows);
+            queue.addAll(rows);
+            return;
         }
-        return result;
     }
 
 
     @Override
     public boolean hasNext() {
-        return !buffer.isEmpty() || !queue.isEmpty();
+        return isFirst || !buffer.isEmpty() || !queue.isEmpty();
     }
 
     @Override
     public Row next() {
         if (buffer.isEmpty()) {
+            if (isFirst) {
+                figure();
+                isFirst = false;
+            }
             while (!queue.isEmpty()) {
                 buffer.add(queue.poll());
             }
             figure();
+        }
+        if (buffer.isEmpty()) {
+            return null;
         }
         return buffer.poll();
     }
