@@ -1,5 +1,6 @@
 package query;
 
+import global.Global;
 import schema.*;
 import java.util.*;
 
@@ -28,7 +29,7 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
             }
         } else {
             if (!(whereCondition.comparer.type.equals(ComparerType.COLUMN) || whereCondition.comparee.type.equals(ComparerType.COLUMN))) {
-                boolean result = staticTypeCheck(whereCondition);
+                boolean result = Global.staticTypeCheck(whereCondition);
                 if (result) {
                     while (iterator.hasNext()) {
                         queue.add(iterator.next());
@@ -49,7 +50,7 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
                         Double comparee = (Double.parseDouble(String.valueOf(row.getEntries().get(foundComparee))));
                         result = comparer.compareTo(comparee);
                     }
-                    boolean right = comparatorTypeCheck(whereCondition.type, result);
+                    boolean right = Global.comparatorTypeCheck(whereCondition.type, result);
                     if (right) {
                         queue.add(row);
                         break;

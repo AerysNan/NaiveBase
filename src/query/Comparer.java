@@ -1,14 +1,14 @@
 package query;
 
 public class Comparer {
-    ComparerType type;
-    Object value;
+    public ComparerType type;
+    public Comparable value;
 
     public Comparer(ComparerType type, String value) {
         this.type = type;
         switch (type) {
             case NUMBER:
-                this.value = Integer.parseInt(value);
+                this.value = Double.parseDouble(value);
                 break;
             case STRING:
             case COLUMN:

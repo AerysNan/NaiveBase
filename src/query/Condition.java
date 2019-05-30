@@ -1,9 +1,9 @@
 package query;
 
 public class Condition {
-    Comparer comparer;
-    Comparer comparee;
-    ComparatorType type;
+    public Comparer comparer;
+    public Comparer comparee;
+    public ComparatorType type;
 
     public Condition(Comparer comparer, Comparer comparee, ComparatorType type) {
         this.comparer = comparer;
