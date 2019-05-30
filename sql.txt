@@ -6,6 +6,11 @@ create table grade (
   score double,
   primary key (id)
 );
+create table grades (
+  id int,
+  nickName string(5),
+  primary key (id)
+);
 show databases;
 insert into grade values(1, "aaa", 99.0);
 insert into grade values(2, "bbb", 98.0);
@@ -14,4 +19,11 @@ insert into grade values(4, "ccc", 96.0);
 insert into grade values(5, "eee", 95.0);
 insert into grade values(6, "fff", 94.0);
 insert into grade values(7, "ggg", 93.0);
-select * from grade where id <> 93;
+insert into grades values(1, "aa");
+insert into grades values(2, "bb");
+insert into grades values(3, "cc");
+insert into grades values(4, "cc");
+insert into grades values(5, "ee");
+insert into grades values(6, "ff");
+insert into grades values(7, "gg");
+select * from grade join grades on grade.id <> grades.id where score > 93;

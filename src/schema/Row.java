@@ -8,8 +8,8 @@ import java.util.StringJoiner;
 public class Row implements Serializable {
 
     private static final long serialVersionUID = -5809782578272943999L;
-    private ArrayList<Entry> entries;
-    private int pageID;
+    public ArrayList<Entry> entries;
+    public int pageID;
 
     public Row(int pageID) {
         this.pageID = pageID;

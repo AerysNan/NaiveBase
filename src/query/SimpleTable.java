@@ -1,18 +1,15 @@
 package query;
 
-import exception.InvalidComparisionException;
 import schema.*;
-
 import java.util.*;
 
 public class SimpleTable extends QueryTable implements Iterator<Row> {
     public Table table;
-    private Condition whereCondition;
+
     private Iterator<Row> iterator;
-    private LinkedList<Row> queue;
-    private LinkedList<Row> buffer;
+
     private Iterator<ArrayList<Row>> mapIterator;
-    private boolean isFirst;
+
 
     public SimpleTable(Table table) {
         this.table = table;
@@ -22,10 +19,7 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
         this.isFirst = true;
     }
 
-    public void setWhereCondition(Condition whereCondition) {
-        this.whereCondition = whereCondition;
-    }
-
+    @Override
     public void figure() {
         if (whereCondition == null) {
             while (iterator.hasNext()) {
@@ -44,14 +38,7 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
             } else if (whereCondition.comparer.type.equals(ComparerType.COLUMN) && whereCondition.comparee.type.equals(ComparerType.COLUMN)) {
                 int foundComparer = columnFind(table.columns, (String) whereCondition.comparer.value);
                 int foundComparee = columnFind(table.columns, (String) whereCondition.comparee.value);
-                if (table.columns.get(foundComparer).getType().equals(Type.STRING) &&
-                        !table.columns.get(foundComparee).getType().equals(Type.STRING)) {
-                    throw new InvalidComparisionException();
-                }
-                if (!table.columns.get(foundComparer).getType().equals(Type.STRING) &&
-                        table.columns.get(foundComparee).getType().equals(Type.STRING)) {
-                    throw new InvalidComparisionException();
-                }
+                columnTypeCheck(table, table, foundComparer, foundComparee);
                 while (iterator.hasNext()) {
                     Row row = iterator.next();
                     int result;
@@ -72,18 +59,7 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
                 if (whereCondition.comparer.type.equals(ComparerType.COLUMN)) {
                     getRowsFromColumnCompare(table, whereCondition);
                 } else {
-                    Comparer newComparer = new Comparer(whereCondition.comparee);
-                    Comparer newComparee = new Comparer(whereCondition.comparer);
-                    if (whereCondition.type == ComparatorType.GE) {
-                        whereCondition.type = ComparatorType.LE;
-                    } else if (whereCondition.type == ComparatorType.LE) {
-                        whereCondition.type = ComparatorType.GE;
-                    } else if (whereCondition.type == ComparatorType.GT) {
-                        whereCondition.type = ComparatorType.LT;
-                    } else if (whereCondition.type == ComparatorType.LT) {
-                        whereCondition.type = ComparatorType.GT;
-                    }
-                    Condition newWhereCondition = new Condition(newComparer, newComparee, whereCondition.type);
+                    Condition newWhereCondition = swapCondition(whereCondition);
                     getRowsFromColumnCompare(table, newWhereCondition);
                 }
             }
@@ -213,36 +189,11 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
     public void getRowsFromSortedMap(SortedMap sortedMap, int index) {
         if (sortedMap.size() == 0)
             return;
-
         while (mapIterator.hasNext()) {
             Map.Entry pair = (Map.Entry) mapIterator.next();
             ArrayList<Row> rows = table.getBySecondaryIndex(table.columns.get(index), (Entry) pair.getKey());
             queue.addAll(rows);
             return;
         }
-    }
-
-
-    @Override
-    public boolean hasNext() {
-        return isFirst || !buffer.isEmpty() || !queue.isEmpty();
-    }
-
-    @Override
-    public Row next() {
-        if (buffer.isEmpty()) {
-            if (isFirst) {
-                figure();
-                isFirst = false;
-            }
-            while (!queue.isEmpty()) {
-                buffer.add(queue.poll());
-            }
-            figure();
-        }
-        if (buffer.isEmpty()) {
-            return null;
-        }
-        return buffer.poll();
     }
 }

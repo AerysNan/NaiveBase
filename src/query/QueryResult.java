@@ -40,13 +40,11 @@ public class QueryResult implements Iterator<QueryResult.QueryRecord> {
     ArrayList<Integer> index;
     String[] selectProjects;
     int queryResultNum;
-    int UIDOffset;
 
-    public QueryResult(ArrayList<Column> header, String[] selectProjects, boolean hasUID) {
+    public QueryResult(ArrayList<Column> header, String[] selectProjects) {
         this.header = header;
         this.selectProjects = selectProjects;
         this.queryResultNum = 0;
-        this.UIDOffset = hasUID ? 1 : 0;
         if (selectProjects != null) {
             this.index = new ArrayList<>();
             for (int i = 0; i < selectProjects.length; i++) {
@@ -62,12 +60,16 @@ public class QueryResult implements Iterator<QueryResult.QueryRecord> {
     public String generateQueryRecord(Row row) {
         QueryRecord record = new QueryRecord(++queryResultNum);
         if (index == null) {
-            for (int i = 0; i < row.getEntries().size() - UIDOffset; i++) {
-                record.add(row.getEntries().get(i));
+            for (int i = 0; i < row.getEntries().size(); i++) {
+                if (header.get(i).getName() != "uid") {
+                    record.add(row.getEntries().get(i));
+                }
             }
         } else {
-            for (int i = 0; i < index.size() - UIDOffset; i++) {
-                record.add(row.getEntries().get(index.get(i)));
+            for (int i = 0; i < index.size(); i++) {
+                if (header.get(i).getName() != "uid") {
+                    record.add(row.getEntries().get(index.get(i)));
+                }
             }
         }
         return record.toString();

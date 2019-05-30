@@ -3,11 +3,29 @@ package query;
 import exception.ColumnNotFoundException;
 import exception.InvalidComparisionException;
 import schema.Column;
+import schema.Row;
+import schema.Table;
+import schema.Type;
 
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedList;
 
-public abstract  class QueryTable {
-    public boolean staticTypeCheck(Condition whereCondition) {
+public abstract  class QueryTable implements Iterator<Row> {
+    public LinkedList<Row> queue;
+    public LinkedList<Row> buffer;
+    public Condition whereCondition;
+    public boolean isFirst;
+
+    public void figure() {
+    }
+
+    public void setWhereCondition(Condition whereCondition) {
+        this.whereCondition = whereCondition;
+    }
+
+
+    public static boolean staticTypeCheck(Condition whereCondition) {
         assert whereCondition.comparer.type != ComparerType.COLUMN;
         assert whereCondition.comparee.type != ComparerType.COLUMN;
         switch (whereCondition.comparer.type) {
@@ -37,7 +55,7 @@ public abstract  class QueryTable {
         return false;
     }
 
-    public boolean comparatorTypeCheck(ComparatorType type, int result) {
+    public static boolean comparatorTypeCheck(ComparatorType type, int result) {
         switch (type) {
             case NE:
                 return result != 0;
@@ -65,5 +83,55 @@ public abstract  class QueryTable {
         if (found == -1)
             throw new ColumnNotFoundException(name);
         return found;
+    }
+
+    public Condition swapCondition(Condition whereCondition) {
+        Comparer newComparer = new Comparer(whereCondition.comparee);
+        Comparer newComparee = new Comparer(whereCondition.comparer);
+        ComparatorType newType = whereCondition.type;
+        if (whereCondition.type == ComparatorType.GE) {
+            newType = ComparatorType.LE;
+        } else if (whereCondition.type == ComparatorType.LE) {
+            newType = ComparatorType.GE;
+        } else if (whereCondition.type == ComparatorType.GT) {
+            newType = ComparatorType.LT;
+        } else if (whereCondition.type == ComparatorType.LT) {
+            newType = ComparatorType.GT;
+        }
+        return new Condition(newComparer, newComparee, newType);
+    }
+
+    public void columnTypeCheck(Table table1, Table table2, int index1, int index2) {
+        if (!table1.columns.get(index1).getType().equals(Type.STRING) &&
+                table2.columns.get(index2).getType().equals(Type.STRING)) {
+            throw new InvalidComparisionException();
+        }
+        if (table1.columns.get(index1).getType().equals(Type.STRING) &&
+                !table2.columns.get(index2).getType().equals(Type.STRING)) {
+            throw new InvalidComparisionException();
+        }
+    }
+
+    @Override
+    public boolean hasNext() {
+        return isFirst || !buffer.isEmpty() || !queue.isEmpty();
+    }
+
+    @Override
+    public Row next() {
+        if (buffer.isEmpty()) {
+            if (isFirst) {
+                figure();
+                isFirst = false;
+            }
+            while (!queue.isEmpty()) {
+                buffer.add(queue.poll());
+            }
+            figure();
+        }
+        if (buffer.isEmpty()) {
+            return null;
+        }
+        return buffer.poll();
     }
 }

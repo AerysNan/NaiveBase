@@ -1,11 +1,9 @@
 package schema;
 
-import exception.DuplicateFieldException;
-import exception.InternalException;
-import exception.MultiplePrimaryKeyException;
-import exception.TableAlreadyExistsException;
+import exception.*;
 import query.QueryResult;
 import query.QueryTable;
+import query.JointTable;
 import query.SimpleTable;
 import query.Condition;
 
@@ -17,11 +15,11 @@ import java.util.ArrayList;
 
 import static global.Global.*;
 
-class Database {
+public class Database {
     private String dataBaseName;
     HashMap<String, Table> tables;
 
-    Database(String name) {
+    public Database(String name) {
         this.dataBaseName = name;
         this.tables = new HashMap<>();
         recoverDatabase();
@@ -58,7 +56,7 @@ class Database {
         }
     }
 
-    void createTable(String tableName, Column[] columns) {
+    public void createTable(String tableName, Column[] columns) {
         if (tables.containsKey(tableName))
             throw new TableAlreadyExistsException(tableName);
         int hasPrimary = 0;
@@ -102,15 +100,15 @@ class Database {
         tables.remove(name);
     }
 
-    String select(String[] columnsProjected, QueryTable[] tablesQueried, Condition whereCondition) {
+    public String select(String[] columnsProjected, QueryTable[] tablesQueried, Condition whereCondition) {
         assert tablesQueried.length > 0;
         StringBuilder result = new StringBuilder();
         if (tablesQueried.length == 1) {
             if (tablesQueried[0] instanceof SimpleTable) {
-                QueryResult queryResult = new QueryResult(tables.get((((SimpleTable) tablesQueried[0]).table.tableName)).columns, columnsProjected, tables.get((((SimpleTable) tablesQueried[0]).table.tableName)).hasUID);
-                ((SimpleTable) tablesQueried[0]).setWhereCondition(whereCondition);
-                while (((SimpleTable) tablesQueried[0]).hasNext()) {
-                    Row row = ((SimpleTable) tablesQueried[0]).next();
+                QueryResult queryResult = new QueryResult(tables.get((((SimpleTable) tablesQueried[0]).table.tableName)).columns, columnsProjected);
+                (tablesQueried[0]).setWhereCondition(whereCondition);
+                while ((tablesQueried[0]).hasNext()) {
+                    Row row = tablesQueried[0].next();
                     if (row == null) {
                         if (result.length() == 0) {
                             result.append("--EMPTY--");
@@ -119,10 +117,24 @@ class Database {
                     }
                     result.append(queryResult.generateQueryRecord(row)).append("\n");
                 }
-                return result.toString();
             } else {
-                return "";
+                ArrayList<Column> columns = new ArrayList<>();
+                columns.addAll(tables.get(((JointTable) tablesQueried[0]).table1.tableName).columns);
+                columns.addAll(tables.get(((JointTable) tablesQueried[0]).table2.tableName).columns);
+                QueryResult queryResult = new QueryResult(columns, columnsProjected);
+                tablesQueried[0].setWhereCondition(whereCondition);
+                while (tablesQueried[0].hasNext()) {
+                    Row row = tablesQueried[0].next();
+                    if (row == null) {
+                        if (result.length() == 0) {
+                            result.append("--EMPTY--");
+                        }
+                        break;
+                    }
+                    result.append(queryResult.generateQueryRecord(row)).append("\n");
+                }
             }
+            return result.toString();
         } else {
             //TODO more table join
             return "";
@@ -193,6 +205,12 @@ class Database {
         Column[] colList = colArrayList.toArray(new Column[0]);
         Table table = new Table(dataBaseName, tableName, colList);
         tables.put(tableName, table);
+    }
+
+    public Table getTable(String name) {
+        if (!tables.containsKey(name))
+            throw new TableNotExistsException(name);
+        return tables.get(name);
     }
 
     void quit() {

@@ -125,7 +125,7 @@ public class Table implements Iterable<Row> {
         times.put(page.getID(), System.currentTimeMillis());
     }
 
-    void insert(String[] values, String[] columnNames) {
+    public void insert(String[] values, String[] columnNames) {
         if (columnNames != null) {
             if (columnNames.length != values.length)
                 throw new ColumnMismatchException();
@@ -217,7 +217,7 @@ public class Table implements Iterable<Row> {
         return new CompositeKey(list);
     }
 
-    Row get(Entry[] entries) {
+    public Row get(Entry[] entries) {
         Entry entry;
         if (entries.length == 1)
             entry = entries[0];
@@ -239,6 +239,8 @@ public class Table implements Iterable<Row> {
     public ArrayList<Row> getBySecondaryIndex(Column column, Entry entry) {
         ArrayList<Entry[]> primaryIndex = secondaryIndexList.get(column.name).get(entry);
         ArrayList<Row> result = new ArrayList<>();
+        if (primaryIndex == null)
+            return null;
         for (Entry[] entries : primaryIndex) {
             result.add(get(entries));
         }
@@ -276,7 +278,7 @@ public class Table implements Iterable<Row> {
         }
     }
 
-    void deleteAllPage() {
+    public void deleteAllPage() {
         File path = new File(dataPath);
         File[] files = path.listFiles();
         if (files == null)
@@ -289,6 +291,10 @@ public class Table implements Iterable<Row> {
             File deleteFile = new File(dataPath + f.getName());
             deleteFile.delete();
         }
+    }
+
+    public int getPageNum() {
+        return pageNum;
     }
 
     public Object parseValue(String s, int index) {
