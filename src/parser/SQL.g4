@@ -13,7 +13,6 @@ sql_stmt :
     | delete_stmt        # deleteStatement
     | drop_table_stmt    # dropTableStatement
     | insert_stmt        # insertStatement
-    | save_stmt          # saveStatement
     | select_stmt        # selectStatement
     | use_db_stmt        # useStatement
     | show_db_stmt       # showDatabaseStatement
@@ -35,7 +34,7 @@ use_db_stmt :
     K_USE database_name;
 
 delete_stmt :
-    K_DELETE K_FROM table_name ( K_WHERE expr )? ;
+    K_DELETE K_FROM table_name ( K_WHERE condition )? ;
 
 drop_table_stmt :
     K_DROP K_TABLE ( K_IF K_EXISTS )? table_name ;
@@ -56,9 +55,6 @@ insert_stmt :
 value_entry :
     '(' expr ( ',' expr )* ')' ;
 
-save_stmt :
-    K_SAVE;
-
 select_stmt :
    select_core ( K_ORDER K_BY column_name ( K_ASC | K_DESC )? )? ;
 
@@ -68,7 +64,7 @@ select_core :
 
 update_stmt :
     K_UPDATE table_name
-        K_SET column_name '=' expr ( ',' column_name '=' expr )* ( K_WHERE condition )? ;
+        K_SET column_name '=' comparer ( K_WHERE condition )? ;
 
 column_def :
     column_name type_name column_constraint* ;
@@ -175,7 +171,6 @@ K_ON : O N;
 K_ORDER : O R D E R;
 K_PRIMARY : P R I M A R Y;
 K_QUIT : Q U I T;
-K_SAVE : S A V E;
 K_SELECT : S E L E C T;
 K_SET : S E T;
 K_SHOW : S H O W;

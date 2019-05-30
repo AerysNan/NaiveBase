@@ -1,10 +1,17 @@
 package test;
 
 import global.Global;
-import org.junit.*;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import query.ComparatorType;
+import query.Comparer;
+import query.ComparerType;
+import query.Condition;
 import schema.*;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 
 public class TableTest {
@@ -26,10 +33,10 @@ public class TableTest {
         Column col2 = new Column("second", Type.INT, 2, false, -1);
         Column col3 = new Column("score", Type.DOUBLE, 0, false, -1);
         Column[] columns = new Column[]{col1, col2, col3};
-        manager.createTable("name", columns);
+        manager.createTable("testComposite", columns);
         for (int i = 0; i < testNum; i++)
             for (int j = 0; j < testNum; j++)
-                manager.insert("name", new String[]{String.valueOf(i), String.valueOf(j), String.valueOf((double) (i * j))}, null);
+                manager.insert("testComposite", new String[]{String.valueOf(i), String.valueOf(j), String.valueOf((double) (i * j))}, null);
         manager.quit();
         manager = new Manager();
         manager.switchDatabase("test");
@@ -42,7 +49,7 @@ public class TableTest {
                         new Entry(1, j),
                         new Entry(2, (double) (i * j))
                 };
-                assertTrue(manager.get("name", new Entry[]{fst, snd}).toString().contains(new Row(e, -1).toString()));
+                assertTrue(manager.get("testComposite", new Entry[]{fst, snd}).toString().contains(new Row(e, -1).toString()));
             }
         }
     }
@@ -54,9 +61,9 @@ public class TableTest {
         Column col2 = new Column("name", Type.STRING, 0, false, 10);
         Column col3 = new Column("score", Type.DOUBLE, 0, false, -1);
         Column[] columns = new Column[]{col1, col2, col3};
-        manager.createTable("grade", columns);
+        manager.createTable("testGet", columns);
         for (int i = 0; i < testNum; i++)
-            manager.insert("grade", new String[]{String.valueOf(i), "'A'", String.valueOf(100 - i)}, null);
+            manager.insert("testGet", new String[]{String.valueOf(i), "'A'", String.valueOf(100 - i)}, null);
         manager.quit();
         manager = new Manager();
         manager.switchDatabase("test");
@@ -67,7 +74,7 @@ public class TableTest {
                     new Entry(1, "A"),
                     new Entry(2, (double) (100 - i))
             };
-            assertEquals(new Row(e, -1).toString(), manager.get("grade", new Entry[]{key}).toString());
+            assertEquals(new Row(e, -1).toString(), manager.get("testGet", new Entry[]{key}).toString());
         }
     }
 

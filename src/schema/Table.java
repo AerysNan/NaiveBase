@@ -2,6 +2,10 @@ package schema;
 
 import exception.*;
 import index.BPlusTree;
+import query.ComparatorType;
+import query.Comparer;
+import query.ComparerType;
+import query.Condition;
 import storage.Page;
 
 import java.io.*;
@@ -10,15 +14,15 @@ import java.util.*;
 import static global.Global.*;
 
 public class Table implements Iterable<Row> {
-    public String databaseName;
+    private String databaseName;
     public String tableName;
     public ArrayList<Column> columns;
     public BPlusTree<Entry, Row> index;
-    public HashMap<String, TreeMap<Entry, ArrayList<Entry[]>>> secondaryIndexList;
-    private ArrayList<Integer> primaryColumnsIndex;
+    public HashMap<String, TreeMap<Entry, ArrayList<Entry>>> secondaryIndexList;
     private long uid;
     private boolean hasComposite;
-    public boolean hasUID;
+    boolean hasUID;
+    private int primaryIndex;
     private HashMap<CompositeKey, Entry> compositeKeyMap;
 
     private HashMap<Integer, Page> pages;
@@ -31,7 +35,6 @@ public class Table implements Iterable<Row> {
         this.columns = new ArrayList<>(Arrays.asList(columns));
         this.compositeKeyMap = new HashMap<>();
         this.uid = columns[columns.length - 1].name.equals("uid") ? 0 : -1;
-        this.primaryColumnsIndex = new ArrayList<>();
         for (Column c : columns) {
             if (c.primary == 2)
                 hasComposite = true;
@@ -40,24 +43,12 @@ public class Table implements Iterable<Row> {
         }
         this.index = new BPlusTree<>();
         this.secondaryIndexList = new HashMap<>();
-        if (hasComposite) {
-            for (int i = 0; i < columns.length; i++) {
-                if (this.columns.get(i).getPrimary() == 2) {
-                    primaryColumnsIndex.add(i);
-                }
-                if (this.columns.get(i).getPrimary() != 1) {
-                    TreeMap treeMap = new TreeMap<Entry, ArrayList<Entry[]>>();
-                    secondaryIndexList.put(this.columns.get(i).name, treeMap);
-                }
-            }
-        } else {
-            for (int i = 0; i < columns.length; i++) {
-                if (this.columns.get(i).getPrimary() == 1) {
-                    primaryColumnsIndex.add(i);
-                } else {
-                    TreeMap treeMap = new TreeMap<Entry, ArrayList<Entry[]>>();
-                    secondaryIndexList.put(this.columns.get(i).name, treeMap);
-                }
+        for (int i = 0; i < columns.length; i++) {
+            if (this.columns.get(i).getPrimary() == 1)
+                primaryIndex = i;
+            else {
+                TreeMap<Entry, ArrayList<Entry>> treeMap = new TreeMap<>();
+                secondaryIndexList.put(this.columns.get(i).name, treeMap);
             }
         }
         pages = new HashMap<>();
@@ -66,7 +57,6 @@ public class Table implements Iterable<Row> {
         allocateNewPage();
     }
 
-    @SuppressWarnings("unchecked")
     private void recoverTable() {
         File path = new File(dataPath);
         File[] files = path.listFiles();
@@ -102,9 +92,8 @@ public class Table implements Iterable<Row> {
                         index.put(entry, pages.size() < maxPageNum ? row : new Row(row.getPageID()));
                         page.addRow(row.getEntries().get(i), row.toString().length());
                         maxPage = maxPage < pageID ? pageID : maxPage;
-                    } else {
-                        updateSecondaryIndex(row, i);
-                    }
+                    } else
+                        insertSecondaryIndex(row, i);
                 }
                 if (hasUID)
                     uid = Math.max(uid, (Long) (entries.get(columnSize - 1).value));
@@ -165,11 +154,14 @@ public class Table implements Iterable<Row> {
             entries[i] = new Entry(i, (Comparable) value);
         }
         if (hasUID) {
-            //FIXME: ensure composite key doesn't collide
             Entry uidEntry = new Entry(entries.length - 1, ++uid);
             entries[entries.length - 1] = uidEntry;
-            if (hasComposite)
+            if (hasComposite) {
+                CompositeKey compositeKey = getCompositeKey(new ArrayList<>(Arrays.asList(entries)));
+                if (compositeKeyMap.containsKey(compositeKey))
+                    throw new DuplicateKeyException();
                 compositeKeyMap.put(getCompositeKey(new ArrayList<>(Arrays.asList(entries))), uidEntry);
+            }
         }
         Row row = new Row(entries, pageNum);
         for (int i = 0; i < entries.length; i++) {
@@ -179,25 +171,30 @@ public class Table implements Iterable<Row> {
                 pages.get(pageNum).setDirty();
                 if (size >= maxPageSize)
                     allocateNewPage();
-            } else {
-                updateSecondaryIndex(row, i);
-            }
+            } else
+                insertSecondaryIndex(row, i);
         }
         times.put(pages.get(pageNum).getID(), System.currentTimeMillis());
     }
 
-    @SuppressWarnings("unchecked")
-    private void updateSecondaryIndex(Row row, int i) {
-        TreeMap secondaryIndex = secondaryIndexList.get(columns.get(i).getName());
-        ArrayList primaryEntryList = (ArrayList<Entry[]>) (secondaryIndex.get(row.getEntries().get(i)));
+    private void insertSecondaryIndex(Row row, int i) {
+        TreeMap<Entry, ArrayList<Entry>> secondaryIndex = secondaryIndexList.get(columns.get(i).getName());
+        ArrayList<Entry> primaryEntryList = secondaryIndex.get(row.getEntries().get(i));
         if (primaryEntryList == null)
             primaryEntryList = new ArrayList<>();
-        Entry[] primaryEntries = new Entry[primaryColumnsIndex.size()];
-        for (int j = 0; j < primaryColumnsIndex.size(); j++) {
-            primaryEntries[j] = row.getEntries().get(primaryColumnsIndex.get(j));
-        }
-        primaryEntryList.add(primaryEntries);
+        primaryEntryList.add(row.getEntries().get(primaryIndex));
         secondaryIndex.put(row.getEntries().get(i), primaryEntryList);
+        secondaryIndexList.put(columns.get(i).name, secondaryIndex);
+    }
+
+    private void deleteSecondaryIndex(Row row, int i) {
+        TreeMap<Entry, ArrayList<Entry>> secondaryIndex = secondaryIndexList.get(columns.get(i).getName());
+        ArrayList<Entry> primaryEntryList = secondaryIndex.get(row.getEntries().get(i));
+        if (primaryEntryList == null)
+            return;
+        primaryEntryList.remove(row.getEntries().get(primaryIndex));
+        if (primaryEntryList.isEmpty())
+            secondaryIndex.remove(row.getEntries().get(i));
         secondaryIndexList.put(columns.get(i).name, secondaryIndex);
     }
 
@@ -237,44 +234,106 @@ public class Table implements Iterable<Row> {
     }
 
     public ArrayList<Row> getBySecondaryIndex(Column column, Entry entry) {
-        ArrayList<Entry[]> primaryIndex = secondaryIndexList.get(column.name).get(entry);
+        ArrayList<Entry> primaryIndex = secondaryIndexList.get(column.name).get(entry);
         ArrayList<Row> result = new ArrayList<>();
         if (primaryIndex == null)
             return null;
-        for (Entry[] entries : primaryIndex) {
-            result.add(get(entries));
-        }
+        for (Entry e : primaryIndex)
+            result.add(get(new Entry[] { e }));
         return result;
     }
 
-
-    public void delete(Entry[] entries) {
-        for (int i = 0; i < columns.size(); i++) {
-            if (columns.get(i).primary == 1) {
-                Row row = get(entries);
-                index.remove(row.getEntries().get(i));
-                Entry entry = row.getEntries().get(i);
-                pages.get(row.getPageID()).deleteRow(entry, row.toString().length());
-                times.put(row.getPageID(), System.currentTimeMillis());
-                pages.get(row.getPageID()).setDirty();
-                return;
+    String delete(Condition deleteCondition) {
+        Iterator<Row> iterator = index.iterator();
+        int count = 0;
+        while (iterator.hasNext()) {
+            Row row = iterator.next();
+            if (!satisfiedCondition(deleteCondition, row))
+                continue;
+            count++;
+            Entry key = row.getEntries().get(primaryIndex);
+            index.remove(key);
+            for (int i = 0; i < columns.size(); i++) {
+                if (columns.get(i).primary == 1)
+                    continue;
+                deleteSecondaryIndex(row, i);
             }
         }
+        return "Deleted " + count + " rows.";
     }
 
-    public void update(Entry[] entries) {
+    String update(String columnName, Comparer comparer, Condition updateCondition) {
+        int columnIndex = -1;
         for (int i = 0; i < columns.size(); i++) {
-            if (columns.get(i).primary == 1) {
-                Row oldRow = get(entries);
-                int pageID = oldRow.getPageID();
-                Row newRow = new Row(entries, pageID);
-                Entry entry = oldRow.getEntries().get(i);
-                index.put(entry, newRow);
-                pages.get(pageID).updateRow(oldRow.toString().length(), newRow.toString().length());
-                times.put(pageID, System.currentTimeMillis());
-                pages.get(pageID).setDirty();
+            if (columns.get(i).name.equals(columnName)) {
+                columnIndex = i;
                 break;
             }
+        }
+        if (columnIndex < 0)
+            throw new ColumnNotFoundException(columnName);
+        Column column = columns.get(columnIndex);
+        int optIndex = -1;
+        switch (comparer.type) {
+            case NULL:
+                if (column.primary == 1 || column.notNull)
+                    throw new ColumnMismatchException();
+                break;
+            case STRING:
+                if (column.type != Type.STRING)
+                    throw new ColumnMismatchException();
+                break;
+            case NUMBER:
+                if (column.type == Type.STRING)
+                    throw new ColumnMismatchException();
+                break;
+            case COLUMN:
+                for (int i = 0; i < columns.size(); i++)
+                    if (columns.get(i).name.equals(comparer.value))
+                        optIndex = i;
+                if (optIndex == -1)
+                    throw new ColumnNotFoundException((String) comparer.value);
+                if (columns.get(optIndex).type != column.type)
+                    throw new ColumnMismatchException();
+                break;
+            default:
+                break;
+        }
+        int count = 0;
+        for (Row row : index) {
+            if (!satisfiedCondition(updateCondition, row))
+                continue;
+            count++;
+            Entry newEntry = new Entry(columnIndex, getComparerValue(row, comparer));
+            if (column.primary == 1) {
+                for (int i = 0; i < columns.size(); i++)
+                    deleteSecondaryIndex(row, i);
+                row.entries.set(columnIndex, newEntry);
+                index.update(newEntry, row);
+                for (int i = 0; i < columns.size(); i++)
+                    insertSecondaryIndex(row, i);
+            } else {
+                deleteSecondaryIndex(row, columnIndex);
+                row.entries.set(columnIndex, newEntry);
+                insertSecondaryIndex(row, columnIndex);
+            }
+        }
+        return "Updated " + count + " rows.";
+    }
+
+    private Comparable getComparerValue(Row row, Comparer comparer) {
+        switch (comparer.type) {
+        case COLUMN:
+            for (int i = 0; i < columns.size(); i++)
+                if (columns.get(i).getName().equals(comparer.value))
+                    return row.getEntries().get(i).value;
+            throw new ColumnNotFoundException((String) comparer.value);
+        case NUMBER:
+        case STRING:
+            return comparer.value;
+        case NULL:
+        default:
+            return null;
         }
     }
 
@@ -301,19 +360,20 @@ public class Table implements Iterable<Row> {
         if (s.equals("null")) {
             if (columns.get(index).notNull)
                 throw new NullValueException(columns.get(index).name);
-            else return null;
+            else
+                return null;
         }
         switch (columns.get(index).type) {
-            case DOUBLE:
-                return Double.parseDouble(s);
-            case INT:
-                return Integer.parseInt(s);
-            case FLOAT:
-                return Float.parseFloat(s);
-            case LONG:
-                return Long.parseLong(s);
-            case STRING:
-                return s.substring(1, s.length() - 1);
+        case DOUBLE:
+            return Double.parseDouble(s);
+        case INT:
+            return Integer.parseInt(s);
+        case FLOAT:
+            return Float.parseFloat(s);
+        case LONG:
+            return Long.parseLong(s);
+        case STRING:
+            return s.substring(1, s.length() - 1);
         }
         return null;
     }
@@ -385,6 +445,77 @@ public class Table implements Iterable<Row> {
         times.put(pageID, System.currentTimeMillis());
     }
 
+    public boolean satisfiedCondition(Condition condition, Row row) {
+        if (condition == null) {
+            return true;
+        } else {
+            if (!(condition.comparer.type.equals(ComparerType.COLUMN) || condition.comparee.type.equals(ComparerType.COLUMN))) {
+                return staticTypeCheck(condition);
+            } else if (condition.comparer.type.equals(ComparerType.COLUMN) && condition.comparee.type.equals(ComparerType.COLUMN)) {
+                int foundComparer = getIndex(condition.comparer);
+                int foundComparee = getIndex(condition.comparee);
+                if (!columns.get(foundComparer).getType().equals(Type.STRING) &&
+                        columns.get(foundComparee).getType().equals(Type.STRING)) {
+                    throw new InvalidComparisionException();
+                }
+                if (columns.get(foundComparer).getType().equals(Type.STRING) &&
+                        !columns.get(foundComparee).getType().equals(Type.STRING)) {
+                    throw new InvalidComparisionException();
+                }
+                int result;
+                if (columns.get(foundComparer).getType().equals(Type.STRING))
+                    result = (row.getEntries().get(foundComparer)).compareTo(row.getEntries().get(foundComparee));
+                else {
+                    Double comparer = (Double.parseDouble(String.valueOf(row.getEntries().get(foundComparer))));
+                    Double comparee = (Double.parseDouble(String.valueOf(row.getEntries().get(foundComparee))));
+                    result = comparer.compareTo(comparee);
+                }
+                return comparatorTypeCheck(condition.type, result);
+            } else if (condition.comparer.type.equals(ComparerType.COLUMN)) {
+                return conditionJudge(condition, row);
+            } else {
+                Condition newCondition = swapCondition(condition);
+                return conditionJudge(newCondition, row);
+            }
+        }
+    }
+
+    public Condition swapCondition(Condition whereCondition) {
+        Comparer newComparer = new Comparer(whereCondition.comparee);
+        Comparer newComparee = new Comparer(whereCondition.comparer);
+        ComparatorType newType = whereCondition.type;
+        if (whereCondition.type == ComparatorType.GE) {
+            newType = ComparatorType.LE;
+        } else if (whereCondition.type == ComparatorType.LE) {
+            newType = ComparatorType.GE;
+        } else if (whereCondition.type == ComparatorType.GT) {
+            newType = ComparatorType.LT;
+        } else if (whereCondition.type == ComparatorType.LT) {
+            newType = ComparatorType.GT;
+        }
+        return new Condition(newComparer, newComparee, newType);
+    }
+
+    public boolean conditionJudge(Condition condition, Row row) {
+        int foundComparer = getIndex(condition.comparer);
+        int result;
+        if (columns.get(foundComparer).getType().equals(Type.STRING)) {
+            result = (row.getEntries().get(foundComparer)).compareTo(new Entry(foundComparer, String.valueOf(condition.comparee.value)));
+        } else {
+            Double comparer = (Double.parseDouble(String.valueOf(row.getEntries().get(foundComparer))));
+            Double comparee = (Double.parseDouble(String.valueOf(condition.comparee.value)));
+            result = comparer.compareTo(comparee);
+        }
+        return comparatorTypeCheck(condition.type, result);
+    }
+
+    private int getIndex(Comparer comparer) {
+        for (int i = 0; i < columns.size(); i++)
+            if (columns.get(i).getName().equals(comparer.value))
+                return i;
+        throw new ColumnNotFoundException((String) comparer.value);
+    }
+
     private void allocateNewPage() {
         Page page = new Page(this.databaseName, this.tableName, ++pageNum);
         addPage(page);
@@ -401,7 +532,6 @@ public class Table implements Iterable<Row> {
             }
         }
     }
-
 
     @Override
     public Iterator<Row> iterator() {

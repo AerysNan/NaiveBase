@@ -7,6 +7,7 @@ import schema.Row;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.StringJoiner;
 
 public class QueryResult implements Iterator<QueryResult.QueryRecord> {
     class QueryRecord {
@@ -23,16 +24,12 @@ public class QueryResult implements Iterator<QueryResult.QueryRecord> {
         }
 
         public String toString() {
-            if (entries.size() == 0) {
+            if (entries.size() == 0)
                 return "";
-            }
-            StringBuilder result = new StringBuilder();
-            result.append("第").append(id).append("条记录：");
-            for (Entry entry : entries) {
-                result.append(entry).append(",");
-            }
-            result.replace(result.length() - 1, result.length(), "");
-            return result.toString();
+            StringJoiner sj = new StringJoiner(", ");
+            for (Entry entry : entries)
+                sj.add(entry.toString());
+            return id + " | " + sj.toString();
         }
     }
 
@@ -60,17 +57,13 @@ public class QueryResult implements Iterator<QueryResult.QueryRecord> {
     public String generateQueryRecord(Row row) {
         QueryRecord record = new QueryRecord(++queryResultNum);
         if (index == null) {
-            for (int i = 0; i < row.getEntries().size(); i++) {
-                if (header.get(i).getName() != "uid") {
+            for (int i = 0; i < row.getEntries().size(); i++)
+                if (header.get(i).getName() != "uid")
                     record.add(row.getEntries().get(i));
-                }
-            }
         } else {
-            for (int i = 0; i < index.size(); i++) {
-                if (header.get(i).getName() != "uid") {
+            for (int i = 0; i < index.size(); i++)
+                if (header.get(i).getName() != "uid")
                     record.add(row.getEntries().get(index.get(i)));
-                }
-            }
         }
         return record.toString();
     }

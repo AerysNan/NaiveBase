@@ -6,7 +6,6 @@ import query.QueryTable;
 import query.JointTable;
 import query.SimpleTable;
 import query.Condition;
-
 import java.io.*;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -105,7 +104,8 @@ public class Database {
         StringBuilder result = new StringBuilder();
         if (tablesQueried.length == 1) {
             if (tablesQueried[0] instanceof SimpleTable) {
-                QueryResult queryResult = new QueryResult(tables.get((((SimpleTable) tablesQueried[0]).table.tableName)).columns, columnsProjected);
+                QueryResult queryResult = new QueryResult(
+                        tables.get((((SimpleTable) tablesQueried[0]).table.tableName)).columns, columnsProjected);
                 (tablesQueried[0]).setWhereCondition(whereCondition);
                 while ((tablesQueried[0]).hasNext()) {
                     Row row = tablesQueried[0].next();
@@ -136,7 +136,7 @@ public class Database {
             }
             return result.toString();
         } else {
-            //TODO more table join
+            // TODO more table join
             return "";
         }
     }
@@ -169,7 +169,8 @@ public class Database {
         String strColumn;
         while (true) {
             try {
-                if ((strColumn = reader.readLine()) == null) break;
+                if ((strColumn = reader.readLine()) == null)
+                    break;
             } catch (IOException e) {
                 throw new InternalException("failed to read from table metadata file.");
             }
@@ -178,23 +179,24 @@ public class Database {
                 throw new InternalException("table metadata file corrupted.");
             Type type = Type.INT;
             switch (columnAttr[1]) {
-                case "INT":
-                    type = Type.INT;
-                    break;
-                case "LONG":
-                    type = Type.LONG;
-                    break;
-                case "FLOAT":
-                    type = Type.FLOAT;
-                    break;
-                case "DOUBLE":
-                    type = Type.DOUBLE;
-                    break;
-                case "STRING":
-                    type = Type.STRING;
-                    break;
+            case "INT":
+                type = Type.INT;
+                break;
+            case "LONG":
+                type = Type.LONG;
+                break;
+            case "FLOAT":
+                type = Type.FLOAT;
+                break;
+            case "DOUBLE":
+                type = Type.DOUBLE;
+                break;
+            case "STRING":
+                type = Type.STRING;
+                break;
             }
-            Column newColumn = new Column(columnAttr[0], type, Integer.parseInt(columnAttr[2]), Boolean.parseBoolean(columnAttr[3]), Integer.parseInt(columnAttr[4]));
+            Column newColumn = new Column(columnAttr[0], type, Integer.parseInt(columnAttr[2]),
+                    Boolean.parseBoolean(columnAttr[3]), Integer.parseInt(columnAttr[4]));
             colArrayList.add(newColumn);
         }
         try {

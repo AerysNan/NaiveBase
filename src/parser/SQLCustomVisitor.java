@@ -3,6 +3,7 @@ package parser;
 import exception.ColumnNotFoundException;
 import exception.ValueFormatException;
 import global.LiteralType;
+import javafx.application.ConditionalFeature;
 import javafx.util.Pair;
 import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.RuleNode;
@@ -52,8 +53,8 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     }
 
     @Override
-    public Object visitDeleteStatement(SQLParser.DeleteStatementContext ctx) {
-        return null;
+    public String visitDeleteStatement(SQLParser.DeleteStatementContext ctx) {
+        return String.valueOf(visit(ctx.delete_stmt()));
     }
 
     @Override
@@ -64,11 +65,6 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     @Override
     public String visitInsertStatement(SQLParser.InsertStatementContext ctx) {
         return String.valueOf(visit(ctx.insert_stmt()));
-    }
-
-    @Override
-    public Object visitSaveStatement(SQLParser.SaveStatementContext ctx) {
-        return null;
     }
 
     @Override
@@ -102,12 +98,12 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     }
 
     @Override
-    public Object visitUpdateStatement(SQLParser.UpdateStatementContext ctx) {
-        return null;
+    public String visitUpdateStatement(SQLParser.UpdateStatementContext ctx) {
+        return String.valueOf(visit(ctx.update_stmt()));
     }
 
     @Override
-    public Object visitCreate_db_stmt(SQLParser.Create_db_stmtContext ctx) {
+    public String visitCreate_db_stmt(SQLParser.Create_db_stmtContext ctx) {
         String name = ctx.database_name().getText();
         try {
             manager.createDatabase(name);
@@ -185,8 +181,12 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     }
 
     @Override
-    public Object visitDelete_stmt(SQLParser.Delete_stmtContext ctx) {
-        return null;
+    public String visitDelete_stmt(SQLParser.Delete_stmtContext ctx) {
+        String tableName = ctx.table_name().getText();
+        if (ctx.K_WHERE() == null)
+            return manager.delete(tableName, null);
+        Condition condition = (Condition) visit(ctx.condition());
+        return manager.delete(tableName, condition);
     }
 
     @Override
@@ -242,11 +242,6 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     }
 
     @Override
-    public Object visitSave_stmt(SQLParser.Save_stmtContext ctx) {
-        return null;
-    }
-
-    @Override
     public String visitSelect_stmt(SQLParser.Select_stmtContext ctx) {
         // TODO: order by
         return String.valueOf(visit(ctx.select_core()));
@@ -276,8 +271,14 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     }
 
     @Override
-    public Object visitUpdate_stmt(SQLParser.Update_stmtContext ctx) {
-        return null;
+    public String visitUpdate_stmt(SQLParser.Update_stmtContext ctx) {
+        String tableName = ctx.table_name().getText();
+        String columnName = ctx.column_name().getText();
+        Comparer comparer = (Comparer) visit(ctx.comparer());
+        if (ctx.K_WHERE() == null)
+            return manager.update(tableName, columnName, comparer, null);
+        Condition condition = (Condition) visit(ctx.condition());
+        return manager.update(tableName, columnName, comparer, condition);
     }
 
     @Override

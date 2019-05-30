@@ -129,6 +129,20 @@ public class Manager {
         return databases.get(current).select(columnsProjected, tablesQueried, whereCondition);
     }
 
+    public String delete(String tableName, Condition deleteCondition) {
+        Database database = databases.get(current);
+        if(!database.tables.containsKey(tableName))
+            throw new TableNotExistsException(tableName);
+        return database.tables.get(tableName).delete(deleteCondition);
+    }
+
+    public String update(String tableName, String columnName, Comparer comparer, Condition condition) {
+        Database database = databases.get(current);
+        if (!database.tables.containsKey(tableName))
+            throw new TableNotExistsException(tableName);
+        return database.tables.get(tableName).update(columnName, comparer, condition);
+    }
+
     private void recoverDatabases() {
         File file = new File(persistFileName);
         if (!file.exists())
