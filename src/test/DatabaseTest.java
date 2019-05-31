@@ -2,32 +2,47 @@ package test;
 
 import org.junit.Before;
 import org.junit.Test;
-import static org.junit.Assert.*;
-
 import query.*;
-import schema.*;
+import schema.Column;
+import schema.Database;
+import type.ColumnType;
+import type.ComparatorType;
+import type.ComparerType;
+
+import static org.junit.Assert.assertEquals;
 
 
 public class DatabaseTest {
-    Database database;
-    int testNum;
+    private Database database;
+    private int testNum;
+
+    private Expression buildSimpleColumnExpression(String columnName) {
+        return new Expression(new Comparer(ComparerType.COLUMN, columnName));
+    }
+
+    private Expression buildSingleNumberExpression(String value) {
+        return new Expression(new Comparer(ComparerType.NUMBER, value));
+    }
 
     @Before
     public void setUp() {
         database = new Database("admin");
-        Column col1 = new Column("id", Type.INT, 1, false, -1);
-        Column col2 = new Column("name", Type.STRING, 0, false, 10);
-        Column col3 = new Column("score", Type.DOUBLE, 0, false, -1);
+
+        Column col1 = new Column("id", ColumnType.INT, 1, false, -1);
+        Column col2 = new Column("name", ColumnType.STRING, 0, false, 10);
+        Column col3 = new Column("score", ColumnType.DOUBLE, 0, false, -1);
         Column[] columns = new Column[]{col1, col2, col3};
         database.createTable("grade", columns);
-        Column col1_ = new Column("id", Type.INT, 1, false, -1);
-        Column col2_ = new Column("nickname", Type.STRING, 0, false, 10);
+
+        Column col1_ = new Column("id", ColumnType.INT, 1, false, -1);
+        Column col2_ = new Column("nickname", ColumnType.STRING, 0, false, 10);
         Column[] columns_ = new Column[]{col1_, col2_};
         database.createTable("grades", columns_);
+
         testNum = 100;
         for (int i = 0; i < testNum; i++) {
             database.getTable("grade").insert(new String[]{String.valueOf(i), "'A'", String.valueOf(100 - i)}, null);
-            database.getTable("grades").insert(new String[]{String.valueOf(i), "'B"}, null);
+            database.getTable("grades").insert(new String[]{String.valueOf(i), "'B'"}, null);
         }
     }
 
@@ -35,234 +50,233 @@ public class DatabaseTest {
     public void testSimpleSelectStaticEmpty() {
         SimpleTable[] tablesQueried = new SimpleTable[1];
         tablesQueried[0] = new SimpleTable(database.getTable("grade"));
-        Comparer comparer = new Comparer(ComparerType.NUMBER, String.valueOf(1));
-        Comparer comparee = new Comparer(ComparerType.NUMBER, String.valueOf(2));
-        Condition condition = new Condition(comparer, comparee, ComparatorType.EQ);
+        Expression left = buildSingleNumberExpression("1");
+        Expression right = buildSingleNumberExpression("2");
+        Condition condition = new Condition(left, right, ComparatorType.EQ);
         String result = database.select(null, tablesQueried, condition);
-        assertEquals(result, "--EMPTY--");
+        assertEquals("--EMPTY--", result);
     }
 
     @Test
     public void testSimpleSelectNotStaticEmpty() {
         SimpleTable[] tablesQueried = new SimpleTable[1];
         tablesQueried[0] = new SimpleTable(database.getTable("grade"));
-        Comparer comparer = new Comparer(ComparerType.COLUMN, "id");
-        Comparer comparee = new Comparer(ComparerType.NUMBER, String.valueOf(1000));
-        Condition condition = new Condition(comparer, comparee, ComparatorType.GT);
+        Expression left = buildSimpleColumnExpression("id");
+        Expression right = buildSingleNumberExpression("1000");
+        Condition condition = new Condition(left, right, ComparatorType.GT);
         String result = database.select(null, tablesQueried, condition);
-        assertEquals(result, "--EMPTY--");
+        assertEquals("--EMPTY--", result);
     }
 
     @Test
     public void testSimpleSelectStaticAll() {
         SimpleTable[] tablesQueried = new SimpleTable[1];
         tablesQueried[0] = new SimpleTable(database.getTable("grade"));
-        Comparer comparer = new Comparer(ComparerType.NUMBER, String.valueOf(1));
-        Comparer comparee = new Comparer(ComparerType.NUMBER, String.valueOf(2));
-        Condition condition = new Condition(comparer, comparee, ComparatorType.LE);
+        Expression left = buildSingleNumberExpression("1");
+        Expression right = buildSingleNumberExpression("2");
+        Condition condition = new Condition(left, right, ComparatorType.LE);
         String result = database.select(null, tablesQueried, condition);
-        assertEquals(result.split("\n").length, testNum);
+        assertEquals(testNum, result.split("\n").length);
     }
 
     @Test
     public void testSimpleSelectNotStaticAll() {
         SimpleTable[] tablesQueried = new SimpleTable[1];
         tablesQueried[0] = new SimpleTable(database.getTable("grade"));
-        Comparer comparer = new Comparer(ComparerType.NUMBER, String.valueOf(-1000));
-        Comparer comparee = new Comparer(ComparerType.COLUMN, "score");
-        Condition condition = new Condition(comparer, comparee, ComparatorType.LT);
+        Expression left = buildSingleNumberExpression("-1000");
+        Expression right = buildSimpleColumnExpression("score");
+        Condition condition = new Condition(left, right, ComparatorType.LT);
         String result = database.select(null, tablesQueried, condition);
-        assertEquals(result.split("\n").length, testNum);
+        assertEquals(testNum, result.split("\n").length);
     }
 
     @Test
     public void testSimpleSelectColumnsCompareNearlyEmpty() {
         SimpleTable[] tablesQueried = new SimpleTable[1];
         tablesQueried[0] = new SimpleTable(database.getTable("grade"));
-        Comparer comparer = new Comparer(ComparerType.COLUMN, "id");
-        Comparer comparee = new Comparer(ComparerType.COLUMN, "score");
-        Condition condition = new Condition(comparer, comparee, ComparatorType.EQ);
+        Expression left = buildSimpleColumnExpression("id");
+        Expression right = buildSimpleColumnExpression("score");
+        Condition condition = new Condition(left, right, ComparatorType.EQ);
         String result = database.select(null, tablesQueried, condition);
-        assertEquals(result.split("\n").length, 1);
+        assertEquals(1, result.split("\n").length);
     }
 
     @Test
     public void testSimpleSelectColumnsCompareNearlyAll() {
         SimpleTable[] tablesQueried = new SimpleTable[1];
         tablesQueried[0] = new SimpleTable(database.getTable("grade"));
-        Comparer comparer = new Comparer(ComparerType.COLUMN, "id");
-        Comparer comparee = new Comparer(ComparerType.COLUMN, "score");
-        Condition condition = new Condition(comparer, comparee, ComparatorType.NE);
+        Expression left = buildSimpleColumnExpression("id");
+        Expression right = buildSimpleColumnExpression("score");
+        Condition condition = new Condition(left, right, ComparatorType.NE);
         String result = database.select(null, tablesQueried, condition);
-        assertEquals(result.split("\n").length, testNum - 1);
+        assertEquals(testNum - 1, result.split("\n").length);
     }
 
     @Test
     public void testSimpleSelectPrimaryColumnCompareAll() {
         SimpleTable[] tablesQueried = new SimpleTable[1];
         tablesQueried[0] = new SimpleTable(database.getTable("grade"));
-        Comparer comparer = new Comparer(ComparerType.COLUMN, "id");
-        Comparer comparee = new Comparer(ComparerType.NUMBER, String.valueOf(1000));
-        Condition condition = new Condition(comparer, comparee, ComparatorType.LE);
+        Expression left = buildSimpleColumnExpression("id");
+        Expression right = buildSingleNumberExpression("1000");
+        Condition condition = new Condition(left, right, ComparatorType.LE);
         String result = database.select(null, tablesQueried, condition);
-        assertEquals(result.split("\n").length, testNum);
+        assertEquals(testNum, result.split("\n").length);
     }
 
     @Test
     public void testSimpleSelectPrimaryColumnCompareEmpty() {
         SimpleTable[] tablesQueried = new SimpleTable[1];
         tablesQueried[0] = new SimpleTable(database.getTable("grade"));
-        Comparer comparer = new Comparer(ComparerType.COLUMN, "id");
-        Comparer comparee = new Comparer(ComparerType.NUMBER, String.valueOf(1000));
-        Condition condition = new Condition(comparer, comparee, ComparatorType.GT);
+        Expression left = buildSimpleColumnExpression("id");
+        Expression right = buildSingleNumberExpression("1000");
+        Condition condition = new Condition(left, right, ComparatorType.GT);
         String result = database.select(null, tablesQueried, condition);
-        assertEquals(result, "--EMPTY--");
+        assertEquals("--EMPTY--", result);
     }
 
     @Test
     public void testSimpleSelectNotPrimaryColumnAll() {
         SimpleTable[] tablesQueried = new SimpleTable[1];
         tablesQueried[0] = new SimpleTable(database.getTable("grade"));
-        Comparer comparer = new Comparer(ComparerType.NUMBER, String.valueOf(1000));
-        Comparer comparee = new Comparer(ComparerType.COLUMN, "score");
-        Condition condition = new Condition(comparer, comparee, ComparatorType.GT);
+        Expression left = buildSingleNumberExpression("1000");
+        Expression right = buildSimpleColumnExpression("score");
+        Condition condition = new Condition(left, right, ComparatorType.GT);
         String result = database.select(null, tablesQueried, condition);
-        assertEquals(result.split("\n").length, testNum);
+        assertEquals(testNum, result.split("\n").length);
     }
 
     @Test
     public void testSimpleSelectNotPrimaryColumnEmpty() {
         SimpleTable[] tablesQueried = new SimpleTable[1];
         tablesQueried[0] = new SimpleTable(database.getTable("grade"));
-        Comparer comparer = new Comparer(ComparerType.NUMBER, String.valueOf(1000));
-        Comparer comparee = new Comparer(ComparerType.COLUMN, "score");
-        Condition condition = new Condition(comparer, comparee, ComparatorType.LT);
+        Expression left = buildSingleNumberExpression("1000");
+        Expression right = buildSimpleColumnExpression("score");
+        Condition condition = new Condition(left, right, ComparatorType.LT);
         String result = database.select(null, tablesQueried, condition);
-        assertEquals(result, "--EMPTY--");
+        assertEquals("--EMPTY--", result);
     }
 
     @Test
     public void testJointSelectStaticEmpty() {
-        Comparer comparer = new Comparer(ComparerType.NUMBER, String.valueOf(1));
-        Comparer comparee = new Comparer(ComparerType.NUMBER, String.valueOf(2));
-        Condition onCondition = new Condition(comparer, comparee, ComparatorType.EQ);
+        Expression left = buildSingleNumberExpression("1");
+        Expression right = buildSingleNumberExpression("2");
+        Condition onCondition = new Condition(left, right, ComparatorType.EQ);
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), onCondition);
         String result = database.select(null, tablesQueried, null);
-        assertEquals(result, "--EMPTY--");
+        assertEquals("--EMPTY--", result);
     }
 
     @Test
     public void testJointSelectStaticAll() {
-        Comparer comparer = new Comparer(ComparerType.NUMBER, String.valueOf(1));
-        Comparer comparee = new Comparer(ComparerType.NUMBER, String.valueOf(2));
-        Condition onCondition = new Condition(comparer, comparee, ComparatorType.LT);
+        Expression left = buildSingleNumberExpression("1");
+        Expression right = buildSingleNumberExpression("2");
+        Condition onCondition = new Condition(left, right, ComparatorType.LT);
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), onCondition);
         String result = database.select(null, tablesQueried, null);
-        assertEquals(result.split("\n").length, testNum * testNum);
+        assertEquals(testNum * testNum, result.split("\n").length);
     }
 
     @Test
     public void testJointSelectNotStaticEmpty() {
-        Comparer comparer = new Comparer(ComparerType.COLUMN, "grade.id");
-        Comparer comparee = new Comparer(ComparerType.NUMBER, String.valueOf(1001));
-        Condition onCondition = new Condition(comparer, comparee, ComparatorType.EQ);
+        Expression left = buildSimpleColumnExpression("grade.id");
+        Expression right = buildSingleNumberExpression("1001");
+        Condition onCondition = new Condition(left, right, ComparatorType.EQ);
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), onCondition);
         String result = database.select(null, tablesQueried, null);
-        assertEquals(result, "--EMPTY--");
+        assertEquals("--EMPTY--", result);
     }
 
     @Test
     public void testJointSelectNotStaticPartly() {
-        Comparer comparer = new Comparer(ComparerType.COLUMN, "grade.id");
-        Comparer comparee = new Comparer(ComparerType.NUMBER, String.valueOf(11));
-        Condition onCondition = new Condition(comparer, comparee, ComparatorType.EQ);
+        Expression left = buildSimpleColumnExpression("grade.id");
+        Expression right = buildSingleNumberExpression("11");
+        Condition onCondition = new Condition(left, right, ComparatorType.EQ);
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), onCondition);
         String result = database.select(null, tablesQueried, null);
-        assertEquals(result.split("\n").length, testNum);
+        assertEquals(testNum, result.split("\n").length);
     }
 
     @Test
     public void testJointSelectNotStaticAll() {
-        Comparer comparee = new Comparer(ComparerType.COLUMN, "grade.id");
-        Comparer comparer = new Comparer(ComparerType.NUMBER, String.valueOf(10001));
-        Condition onCondition = new Condition(comparer, comparee, ComparatorType.GT);
+        Expression left = buildSimpleColumnExpression("grade.id");
+        Expression right = buildSingleNumberExpression("10001");
+        Condition onCondition = new Condition(left, right, ComparatorType.LT);
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), onCondition);
         String result = database.select(null, tablesQueried, null);
-        assertEquals(result.split("\n").length, testNum * testNum);
+        assertEquals(testNum * testNum, result.split("\n").length);
     }
 
     @Test
     public void testJointSelectColumnsCompareNearlyEmpty() {
-        Comparer comparee = new Comparer(ComparerType.COLUMN, "grade.id");
-        Comparer comparer = new Comparer(ComparerType.COLUMN, "grades.id");
-        Condition onCondition = new Condition(comparer, comparee, ComparatorType.EQ);
+        Expression left = buildSimpleColumnExpression("grade.id");
+        Expression right = buildSimpleColumnExpression("grades.id");
+        Condition onCondition = new Condition(left, right, ComparatorType.EQ);
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), onCondition);
         String result = database.select(null, tablesQueried, null);
-        assertEquals(result.split("\n").length, testNum);
+        assertEquals(testNum, result.split("\n").length);
     }
 
     @Test
     public void testJointSelectColumnsCompareNearlyAll() {
-        Comparer comparee = new Comparer(ComparerType.COLUMN, "grade.id");
-        Comparer comparer = new Comparer(ComparerType.COLUMN, "grades.id");
-        Condition onCondition = new Condition(comparer, comparee, ComparatorType.NE);
+        Expression left = buildSimpleColumnExpression("grade.id");
+        Expression right = buildSimpleColumnExpression("grades.id");
+        Condition onCondition = new Condition(left, right, ComparatorType.NE);
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), onCondition);
         String result = database.select(null, tablesQueried, null);
-        String[] tmp = result.split("\n");
-        assertEquals(result.split("\n").length, testNum * (testNum - 1));
+        assertEquals(testNum * (testNum - 1), result.split("\n").length);
     }
 
     @Test
     public void testJointSelectColumnCompareAll() {
-        Comparer comparer = new Comparer(ComparerType.COLUMN, "grade.score");
-        Comparer comparee = new Comparer(ComparerType.NUMBER, String.valueOf(1000));
-        Condition onCondition = new Condition(comparer, comparee, ComparatorType.LT);
+        Expression left = buildSimpleColumnExpression("grade.score");
+        Expression right = buildSingleNumberExpression("1000");
+        Condition onCondition = new Condition(left, right, ComparatorType.LT);
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), onCondition);
         String result = database.select(null, tablesQueried, null);
-        assertEquals(result.split("\n").length, testNum * testNum);
+        assertEquals(testNum * testNum, result.split("\n").length);
     }
 
     @Test
     public void testJointSelectColumnComparePartly() {
-        Comparer comparee = new Comparer(ComparerType.COLUMN, "grade.score");
-        Comparer comparer = new Comparer(ComparerType.NUMBER, String.valueOf(1));
-        Condition onCondition = new Condition(comparer, comparee, ComparatorType.EQ);
+        Expression left = buildSimpleColumnExpression("grade.score");
+        Expression right = buildSingleNumberExpression("1");
+        Condition onCondition = new Condition(left, right, ComparatorType.EQ);
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), onCondition);
         String result = database.select(null, tablesQueried, null);
-        assertEquals(result.split("\n").length, testNum);
+        assertEquals(testNum, result.split("\n").length);
     }
 
     @Test
     public void testJointSelectColumnCompareEmpty() {
-        Comparer comparee = new Comparer(ComparerType.COLUMN, "grade.score");
-        Comparer comparer = new Comparer(ComparerType.NUMBER, String.valueOf(1000));
-        Condition onCondition = new Condition(comparer, comparee, ComparatorType.EQ);
+        Expression left = buildSimpleColumnExpression("grade.score");
+        Expression right = buildSingleNumberExpression("1000");
+        Condition onCondition = new Condition(left, right, ComparatorType.EQ);
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), onCondition);
         String result = database.select(null, tablesQueried, null);
-        assertEquals(result, "--EMPTY--");
+        assertEquals("--EMPTY--", result);
     }
 
     @Test
     public void testJointSelectColumnCompareWhere() {
-        Comparer comparee = new Comparer(ComparerType.COLUMN, "grade.id");
-        Comparer comparer = new Comparer(ComparerType.COLUMN, "grades.id");
-        Condition onCondition = new Condition(comparer, comparee, ComparatorType.NE);
-        Comparer comparer_ = new Comparer(ComparerType.COLUMN, "grade.score");
-        Comparer comparee_ = new Comparer(ComparerType.NUMBER, String.valueOf(1));
-        Condition whereCondition = new Condition(comparer_, comparee_, ComparatorType.EQ);
+        Expression l1 = buildSimpleColumnExpression("grade.id");
+        Expression r1 = buildSimpleColumnExpression("grades.id");
+        Condition onCondition = new Condition(l1, r1, ComparatorType.NE);
+        Expression l2 = buildSimpleColumnExpression("grade.score");
+        Expression r2 = buildSingleNumberExpression("1");
+        Condition whereCondition = new Condition(l2, r2, ComparatorType.EQ);
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), onCondition);
         String result = database.select(null, tablesQueried, whereCondition);
-        assertEquals(result.split("\n").length, testNum - 1);
+        assertEquals(testNum - 1, result.split("\n").length);
     }
 }

@@ -2,11 +2,12 @@ package schema;
 
 import exception.*;
 import index.BPlusTree;
-import query.ComparatorType;
-import query.Comparer;
-import query.ComparerType;
+import type.ComparatorType;
+import type.ComparerType;
 import query.Condition;
+import query.Expression;
 import storage.Page;
+import type.ColumnType;
 
 import java.io.*;
 import java.util.*;
@@ -21,7 +22,7 @@ public class Table implements Iterable<Row> {
     public HashMap<String, TreeMap<Entry, ArrayList<Entry>>> secondaryIndexList;
     private long uid;
     private boolean hasComposite;
-    boolean hasUID;
+    private boolean hasUID;
     private int primaryIndex;
     private HashMap<CompositeKey, Entry> compositeKeyMap;
 
@@ -149,7 +150,7 @@ public class Table implements Iterable<Row> {
                 if (!found && column.notNull)
                     throw new NullValueException(column.name);
             }
-            if (column.type == Type.STRING && value != null && String.valueOf(value).length() > column.maxLength)
+            if (column.type == ColumnType.STRING && value != null && String.valueOf(value).length() > column.maxLength)
                 throw new StringExceedMaxLengthException(column.name);
             entries[i] = new Entry(i, (Comparable) value);
         }
@@ -198,13 +199,6 @@ public class Table implements Iterable<Row> {
         secondaryIndexList.put(columns.get(i).name, secondaryIndex);
     }
 
-    private boolean hasColumn(String name) {
-        for (Column c : columns)
-            if (name.equals(c.name))
-                return true;
-        return false;
-    }
-
     private CompositeKey getCompositeKey(ArrayList<Entry> entries) {
         ArrayList<Entry> list = new ArrayList<>();
         int n = entries.size();
@@ -239,7 +233,7 @@ public class Table implements Iterable<Row> {
         if (primaryIndex == null)
             return null;
         for (Entry e : primaryIndex)
-            result.add(get(new Entry[] { e }));
+            result.add(get(new Entry[]{e}));
         return result;
     }
 
@@ -248,7 +242,7 @@ public class Table implements Iterable<Row> {
         int count = 0;
         while (iterator.hasNext()) {
             Row row = iterator.next();
-            if (!satisfiedCondition(deleteCondition, row))
+            if (failedCondition(deleteCondition, row))
                 continue;
             count++;
             Entry key = row.getEntries().get(primaryIndex);
@@ -262,7 +256,7 @@ public class Table implements Iterable<Row> {
         return "Deleted " + count + " rows.";
     }
 
-    String update(String columnName, Comparer comparer, Condition updateCondition) {
+    String update(String columnName, Expression expression, Condition updateCondition) {
         int columnIndex = -1;
         for (int i = 0; i < columns.size(); i++) {
             if (columns.get(i).name.equals(columnName)) {
@@ -273,27 +267,17 @@ public class Table implements Iterable<Row> {
         if (columnIndex < 0)
             throw new ColumnNotFoundException(columnName);
         Column column = columns.get(columnIndex);
-        int optIndex = -1;
-        switch (comparer.type) {
+        switch (getColumnType(columnName)) {
             case NULL:
                 if (column.primary == 1 || column.notNull)
                     throw new ColumnMismatchException();
                 break;
             case STRING:
-                if (column.type != Type.STRING)
+                if (column.type != ColumnType.STRING)
                     throw new ColumnMismatchException();
                 break;
             case NUMBER:
-                if (column.type == Type.STRING)
-                    throw new ColumnMismatchException();
-                break;
-            case COLUMN:
-                for (int i = 0; i < columns.size(); i++)
-                    if (columns.get(i).name.equals(comparer.value))
-                        optIndex = i;
-                if (optIndex == -1)
-                    throw new ColumnNotFoundException((String) comparer.value);
-                if (columns.get(optIndex).type != column.type)
+                if (column.type == ColumnType.STRING)
                     throw new ColumnMismatchException();
                 break;
             default:
@@ -301,17 +285,25 @@ public class Table implements Iterable<Row> {
         }
         int count = 0;
         for (Row row : index) {
-            if (!satisfiedCondition(updateCondition, row))
+            if (failedCondition(updateCondition, row))
                 continue;
             count++;
-            Entry newEntry = new Entry(columnIndex, getComparerValue(row, comparer));
+            Entry oldEntry = row.getEntries().get(columnIndex);
+            Entry newEntry = new Entry(columnIndex, comparerValueToEntryValue(evalExpressionValue(expression, row), columnIndex));
             if (column.primary == 1) {
                 for (int i = 0; i < columns.size(); i++)
-                    deleteSecondaryIndex(row, i);
+                    if (i != primaryIndex)
+                        deleteSecondaryIndex(row, i);
                 row.entries.set(columnIndex, newEntry);
-                index.update(newEntry, row);
+                if (index.containsKey(newEntry))
+                    index.update(newEntry, row);
+                else {
+                    index.remove(oldEntry);
+                    index.put(newEntry, row);
+                }
                 for (int i = 0; i < columns.size(); i++)
-                    insertSecondaryIndex(row, i);
+                    if (i != primaryIndex)
+                        insertSecondaryIndex(row, i);
             } else {
                 deleteSecondaryIndex(row, columnIndex);
                 row.entries.set(columnIndex, newEntry);
@@ -321,23 +313,7 @@ public class Table implements Iterable<Row> {
         return "Updated " + count + " rows.";
     }
 
-    private Comparable getComparerValue(Row row, Comparer comparer) {
-        switch (comparer.type) {
-        case COLUMN:
-            for (int i = 0; i < columns.size(); i++)
-                if (columns.get(i).getName().equals(comparer.value))
-                    return row.getEntries().get(i).value;
-            throw new ColumnNotFoundException((String) comparer.value);
-        case NUMBER:
-        case STRING:
-            return comparer.value;
-        case NULL:
-        default:
-            return null;
-        }
-    }
-
-    public void deleteAllPage() {
+    void deleteAllPage() {
         File path = new File(dataPath);
         File[] files = path.listFiles();
         if (files == null)
@@ -352,11 +328,24 @@ public class Table implements Iterable<Row> {
         }
     }
 
-    public int getPageNum() {
-        return pageNum;
+    public Comparable comparerValueToEntryValue(Comparable value, int index) {
+        if (value == null)
+            return null;
+        switch (columns.get(index).type) {
+            case STRING:
+            case DOUBLE:
+                return value;
+            case INT:
+                return ((Number) value).intValue();
+            case FLOAT:
+                return ((Number) value).floatValue();
+            case LONG:
+                return ((Number) value).longValue();
+        }
+        return null;
     }
 
-    public Object parseValue(String s, int index) {
+    private Object parseValue(String s, int index) {
         if (s.equals("null")) {
             if (columns.get(index).notNull)
                 throw new NullValueException(columns.get(index).name);
@@ -364,16 +353,16 @@ public class Table implements Iterable<Row> {
                 return null;
         }
         switch (columns.get(index).type) {
-        case DOUBLE:
-            return Double.parseDouble(s);
-        case INT:
-            return Integer.parseInt(s);
-        case FLOAT:
-            return Float.parseFloat(s);
-        case LONG:
-            return Long.parseLong(s);
-        case STRING:
-            return s.substring(1, s.length() - 1);
+            case DOUBLE:
+                return Double.parseDouble(s);
+            case INT:
+                return Integer.parseInt(s);
+            case FLOAT:
+                return Float.parseFloat(s);
+            case LONG:
+                return Long.parseLong(s);
+            case STRING:
+                return s.substring(1, s.length() - 1);
         }
         return null;
     }
@@ -445,75 +434,77 @@ public class Table implements Iterable<Row> {
         times.put(pageID, System.currentTimeMillis());
     }
 
-    public boolean satisfiedCondition(Condition condition, Row row) {
+    public boolean failedCondition(Condition condition, Row row) {
         if (condition == null) {
-            return true;
+            return false;
         } else {
-            if (!(condition.comparer.type.equals(ComparerType.COLUMN) || condition.comparee.type.equals(ComparerType.COLUMN))) {
-                return staticTypeCheck(condition);
-            } else if (condition.comparer.type.equals(ComparerType.COLUMN) && condition.comparee.type.equals(ComparerType.COLUMN)) {
-                int foundComparer = getIndex(condition.comparer);
-                int foundComparee = getIndex(condition.comparee);
-                if (!columns.get(foundComparer).getType().equals(Type.STRING) &&
-                        columns.get(foundComparee).getType().equals(Type.STRING)) {
-                    throw new InvalidComparisionException();
+            ComparerType t1 = evalExpressionType(condition.left);
+            ComparerType t2 = evalExpressionType(condition.right);
+            if (condition.type == ComparatorType.EQ) {
+                if (t1 == ComparerType.NULL && t2 == ComparerType.NULL)
+                    return false;
+                if (t1 == ComparerType.NULL || t2 == ComparerType.NULL)
+                    return true;
+                if (t1 == t2) {
+                    Comparable v1 = evalExpressionValue(condition.left, row);
+                    Comparable v2 = evalExpressionValue(condition.right, row);
+                    if (t1 == ComparerType.STRING)
+                        return v1 != v2;
+                    if (v1 == null || v2 == null)
+                        throw new InvalidComparisionException();
+                    double d1 = ((Number) v1).doubleValue();
+                    double d2 = ((Number) v2).doubleValue();
+                    return d1 != d2;
                 }
-                if (columns.get(foundComparer).getType().equals(Type.STRING) &&
-                        !columns.get(foundComparee).getType().equals(Type.STRING)) {
-                    throw new InvalidComparisionException();
-                }
-                int result;
-                if (columns.get(foundComparer).getType().equals(Type.STRING))
-                    result = (row.getEntries().get(foundComparer)).compareTo(row.getEntries().get(foundComparee));
-                else {
-                    Double comparer = (Double.parseDouble(String.valueOf(row.getEntries().get(foundComparer))));
-                    Double comparee = (Double.parseDouble(String.valueOf(row.getEntries().get(foundComparee))));
-                    result = comparer.compareTo(comparee);
-                }
-                return comparatorTypeCheck(condition.type, result);
-            } else if (condition.comparer.type.equals(ComparerType.COLUMN)) {
-                return conditionJudge(condition, row);
-            } else {
-                Condition newCondition = swapCondition(condition);
-                return conditionJudge(newCondition, row);
+                throw new InvalidComparisionException();
             }
+            if (condition.type == ComparatorType.NE) {
+                if (t1 == ComparerType.NULL && t2 == ComparerType.NULL)
+                    return true;
+                if (t1 == ComparerType.NULL || t2 == ComparerType.NULL)
+                    return false;
+                if (t1 == t2) {
+                    Comparable v1 = evalExpressionValue(condition.left, row);
+                    Comparable v2 = evalExpressionValue(condition.right, row);
+                    if (t1 == ComparerType.STRING)
+                        return v1 == v2;
+                    if (v1 == null || v2 == null)
+                        throw new InvalidComparisionException();
+                    double d1 = ((Number) v1).doubleValue();
+                    double d2 = ((Number) v2).doubleValue();
+                    return d1 == d2;
+                }
+                throw new InvalidComparisionException();
+            }
+            if (!comparisionTypeCheck(condition))
+                throw new InvalidComparisionException();
+            Comparable v1 = evalExpressionValue(condition.left, row);
+            Comparable v2 = evalExpressionValue(condition.right, row);
+            if (v1 == null || v2 == null)
+                throw new InvalidComparisionException();
+            if (t1 == ComparerType.STRING) {
+                if (condition.type == ComparatorType.GT)
+                    return v1.compareTo(v2) <= 0;
+                if (condition.type == ComparatorType.GE)
+                    return v1.compareTo(v2) < 0;
+                if (condition.type == ComparatorType.LT)
+                    return v1.compareTo(v2) >= 0;
+                if (condition.type == ComparatorType.LE)
+                    return v1.compareTo(v2) > 0;
+                return true;
+            }
+            double d1 = ((Number) v1).doubleValue();
+            double d2 = ((Number) v2).doubleValue();
+            if (condition.type == ComparatorType.GT)
+                return d1 <= d2;
+            if (condition.type == ComparatorType.GE)
+                return d1 < d2;
+            if (condition.type == ComparatorType.LT)
+                return d1 >= d2;
+            if (condition.type == ComparatorType.LE)
+                return d1 > d2;
+            return true;
         }
-    }
-
-    public Condition swapCondition(Condition whereCondition) {
-        Comparer newComparer = new Comparer(whereCondition.comparee);
-        Comparer newComparee = new Comparer(whereCondition.comparer);
-        ComparatorType newType = whereCondition.type;
-        if (whereCondition.type == ComparatorType.GE) {
-            newType = ComparatorType.LE;
-        } else if (whereCondition.type == ComparatorType.LE) {
-            newType = ComparatorType.GE;
-        } else if (whereCondition.type == ComparatorType.GT) {
-            newType = ComparatorType.LT;
-        } else if (whereCondition.type == ComparatorType.LT) {
-            newType = ComparatorType.GT;
-        }
-        return new Condition(newComparer, newComparee, newType);
-    }
-
-    public boolean conditionJudge(Condition condition, Row row) {
-        int foundComparer = getIndex(condition.comparer);
-        int result;
-        if (columns.get(foundComparer).getType().equals(Type.STRING)) {
-            result = (row.getEntries().get(foundComparer)).compareTo(new Entry(foundComparer, String.valueOf(condition.comparee.value)));
-        } else {
-            Double comparer = (Double.parseDouble(String.valueOf(row.getEntries().get(foundComparer))));
-            Double comparee = (Double.parseDouble(String.valueOf(condition.comparee.value)));
-            result = comparer.compareTo(comparee);
-        }
-        return comparatorTypeCheck(condition.type, result);
-    }
-
-    private int getIndex(Comparer comparer) {
-        for (int i = 0; i < columns.size(); i++)
-            if (columns.get(i).getName().equals(comparer.value))
-                return i;
-        throw new ColumnNotFoundException((String) comparer.value);
     }
 
     private void allocateNewPage() {
@@ -529,6 +520,102 @@ public class Table implements Iterable<Row> {
                 } catch (IOException e) {
                     throw new InternalException("failed to write dirty page to disk.");
                 }
+            }
+        }
+    }
+
+    public boolean comparisionTypeCheck(Condition whereCondition) {
+        ComparerType t1 = evalExpressionType(whereCondition.left);
+        ComparerType t2 = evalExpressionType(whereCondition.right);
+        return t1 != null && t1 != ComparerType.NULL && t1 == t2;
+    }
+
+
+    private ComparerType evalExpressionType(Expression expression) {
+        if (expression.terminal) {
+            switch (expression.comparer.type) {
+                case STRING:
+                    return ComparerType.STRING;
+                case NUMBER:
+                    return ComparerType.NUMBER;
+                case COLUMN:
+                    return getColumnType((String) expression.comparer.value);
+                default:
+                    return ComparerType.NULL;
+            }
+        } else {
+            ComparerType t1 = evalExpressionType(expression.left);
+            ComparerType t2 = evalExpressionType(expression.right);
+            if (t1 == ComparerType.NUMBER && t2 == ComparerType.NUMBER)
+                return ComparerType.NUMBER;
+            throw new InvalidExpressionException();
+        }
+    }
+
+    private int getColumnIndex(String columnName) {
+        for (int i = 0; i < columns.size(); i++)
+            if (columns.get(i).getName().equals(columnName))
+                return i;
+        return -1;
+    }
+
+    private ComparerType getColumnType(String columnName) {
+        int i = getColumnIndex(columnName);
+        if (i < 0)
+            throw new ColumnNotFoundException(columnName);
+        switch (columns.get(i).type) {
+            case LONG:
+            case FLOAT:
+            case INT:
+            case DOUBLE:
+                return ComparerType.NUMBER;
+            case STRING:
+                return ComparerType.STRING;
+        }
+        throw new ColumnNotFoundException(columnName);
+    }
+
+    private Comparable getColumnValue(String columnName, Row row) {
+        int i = getColumnIndex(columnName);
+        if (i < 0)
+            throw new ColumnNotFoundException(columnName);
+        return row.getEntries().get(i).value;
+    }
+
+    private boolean hasColumn(String columnName) {
+        return getColumnIndex(columnName) >= 0;
+    }
+
+    private Comparable evalExpressionValue(Expression expression, Row row) {
+        if (expression.terminal) {
+            switch (expression.comparer.type) {
+                case NUMBER:
+                case STRING:
+                case NULL:
+                    return expression.comparer.value;
+                case COLUMN:
+                    return getColumnValue((String) expression.comparer.value, row);
+                default:
+                    return null;
+            }
+        } else {
+            Comparable v1 = evalExpressionValue(expression.left, row);
+            Comparable v2 = evalExpressionValue(expression.right, row);
+            if (v1 == null || v2 == null)
+                throw new InvalidExpressionException();
+            double d1 = ((Number) v1).doubleValue();
+            double d2 = ((Number) v2).doubleValue();
+            switch (expression.operatorType) {
+                case ADD:
+                    return d1 + d2;
+                case DIV:
+                    return d1 / d2;
+                case SUB:
+                    return d1 - d2;
+                case MUL:
+                    return d1 * d2;
+                default:
+                    return null;
             }
         }
     }

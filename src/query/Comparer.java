@@ -1,5 +1,7 @@
 package query;
 
+import type.ComparerType;
+
 public class Comparer {
     public ComparerType type;
     public Comparable value;
@@ -14,8 +16,6 @@ public class Comparer {
             case COLUMN:
                 this.value = value;
                 break;
-            case NULL:
-                this.value = null;
             default:
                 this.value = null;
         }

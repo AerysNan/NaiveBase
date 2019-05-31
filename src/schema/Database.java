@@ -6,6 +6,8 @@ import query.QueryTable;
 import query.JointTable;
 import query.SimpleTable;
 import query.Condition;
+import type.ColumnType;
+
 import java.io.*;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -78,7 +80,7 @@ public class Database {
         if (hasPrimary == 1)
             table = new Table(dataBaseName, tableName, columns);
         else {
-            Column primaryColumn = new Column("uid", Type.LONG, 1, true, -1);
+            Column primaryColumn = new Column("uid", ColumnType.LONG, 1, true, -1);
             Column[] newColumns = new Column[columns.length + 1];
             newColumns[columns.length] = primaryColumn;
             System.arraycopy(columns, 0, newColumns, 0, newColumns.length - 1);
@@ -90,13 +92,13 @@ public class Database {
     void deleteAllTable() {
         for (String name : tables.keySet())
             deleteTable(name);
+        tables.clear();
     }
 
     void deleteTable(String name) {
         File file = new File(metadataPath + this.dataBaseName + "_" + name + ".dat");
         file.delete();
         tables.get(name).deleteAllPage();
-        tables.remove(name);
     }
 
     public String select(String[] columnsProjected, QueryTable[] tablesQueried, Condition whereCondition) {
@@ -104,15 +106,13 @@ public class Database {
         StringBuilder result = new StringBuilder();
         if (tablesQueried.length == 1) {
             if (tablesQueried[0] instanceof SimpleTable) {
-                QueryResult queryResult = new QueryResult(
-                        tables.get((((SimpleTable) tablesQueried[0]).table.tableName)).columns, columnsProjected);
+                QueryResult queryResult = new QueryResult(tables.get((((SimpleTable) tablesQueried[0]).table.tableName)).columns, columnsProjected);
                 (tablesQueried[0]).setWhereCondition(whereCondition);
                 while ((tablesQueried[0]).hasNext()) {
                     Row row = tablesQueried[0].next();
                     if (row == null) {
-                        if (result.length() == 0) {
+                        if (result.length() == 0)
                             result.append("--EMPTY--");
-                        }
                         break;
                     }
                     result.append(queryResult.generateQueryRecord(row)).append("\n");
@@ -136,7 +136,7 @@ public class Database {
             }
             return result.toString();
         } else {
-            // TODO more table join
+            // TODO: more table join
             return "";
         }
     }
@@ -177,22 +177,22 @@ public class Database {
             String[] columnAttr = strColumn.split(",");
             if (columnAttr.length != 5)
                 throw new InternalException("table metadata file corrupted.");
-            Type type = Type.INT;
+            ColumnType type = ColumnType.INT;
             switch (columnAttr[1]) {
             case "INT":
-                type = Type.INT;
+                type = ColumnType.INT;
                 break;
             case "LONG":
-                type = Type.LONG;
+                type = ColumnType.LONG;
                 break;
             case "FLOAT":
-                type = Type.FLOAT;
+                type = ColumnType.FLOAT;
                 break;
             case "DOUBLE":
-                type = Type.DOUBLE;
+                type = ColumnType.DOUBLE;
                 break;
             case "STRING":
-                type = Type.STRING;
+                type = ColumnType.STRING;
                 break;
             }
             Column newColumn = new Column(columnAttr[0], type, Integer.parseInt(columnAttr[2]),

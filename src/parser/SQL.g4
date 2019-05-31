@@ -53,7 +53,7 @@ insert_stmt :
         K_VALUES value_entry ( ',' value_entry )* ;
 
 value_entry :
-    '(' expr ( ',' expr )* ')' ;
+    '(' literal_value ( ',' literal_value )* ')' ;
 
 select_stmt :
    select_core ( K_ORDER K_BY column_name ( K_ASC | K_DESC )? )? ;
@@ -64,7 +64,7 @@ select_core :
 
 update_stmt :
     K_UPDATE table_name
-        K_SET column_name '=' comparer ( K_WHERE condition )? ;
+        K_SET column_name '=' expression ( K_WHERE condition )? ;
 
 column_def :
     column_name type_name column_constraint* ;
@@ -81,7 +81,7 @@ column_constraint :
     | K_NOT K_NULL      # notNullConstraint ;
 
 condition :
-    comparer comparator comparer;
+    expression comparator expression;
 
 comparer :
     column_full_name
@@ -90,15 +90,11 @@ comparer :
 comparator :
     EQ | NE | LE | GE | LT | GT ;
 
-expr :
-    literal_value
-    | column_full_name
-    | unary_operator expr
-    | expr comparator expr ;
-
-unary_operator :
-    '-'
-    | '+' ;
+expression :
+    comparer
+    | expression ( MUL | DIV ) expression
+    | expression ( ADD | SUB ) expression
+    | '(' expression ')';
 
 table_constraint :
     K_PRIMARY K_KEY '(' column_name (',' column_name)* ')' ;
@@ -117,20 +113,16 @@ literal_value :
     | K_NULL ;
 
 database_name :
-    any_name ;
+    IDENTIFIER ;
 
 table_name :
-    any_name ;
+    IDENTIFIER ;
 
 column_full_name:
     ( table_name '.' )? column_name ;
 
 column_name :
-    any_name ;
-
-any_name :
-    IDENTIFIER
-    | STRING_LITERAL ;
+    IDENTIFIER ;
 
 EQ : '=';
 NE : '<>';
@@ -139,6 +131,10 @@ GT : '>';
 LE : '<=';
 GE : '>=';
 
+ADD : '+';
+SUB : '-';
+MUL : '*';
+DIV : '/';
 
 T_INT : I N T;
 T_LONG : L O N G;
@@ -182,10 +178,7 @@ K_VALUES : V A L U E S;
 K_WHERE : W H E R E;
 
 IDENTIFIER :
-    '"' (~'"' | '""')* '"'
-    | '`' (~'`' | '``')* '`'
-    | '[' ~']'* ']'
-    | [a-zA-Z_] [a-zA-Z_0-9]* ;
+    [a-zA-Z_] [a-zA-Z_0-9]* ;
 
 NUMERIC_LITERAL :
     DIGIT+ EXPONENT?

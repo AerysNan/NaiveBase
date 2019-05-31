@@ -1,3 +1,4 @@
+drop database if exists test;
 create database test;
 use test;
 create table grade (
@@ -12,18 +13,7 @@ create table grades (
   primary key (id)
 );
 show databases;
-insert into grade values(1, "aaa", 99.0);
-insert into grade values(2, "bbb", 98.0);
-insert into grade values(3, "ccc", 97.0);
-insert into grade values(4, "ccc", 96.0);
-insert into grade values(5, "eee", 95.0);
-insert into grade values(6, "fff", 94.0);
-insert into grade values(7, "ggg", 93.0);
-insert into grades values(1, "aa");
-insert into grades values(2, "bb");
-insert into grades values(3, "cc");
-insert into grades values(4, "cc");
-insert into grades values(5, "ee");
-insert into grades values(6, "ff");
-insert into grades values(7, "gg");
-select * from grade join grades on grade.id <> grades.id where score > 93;
+insert into grade values (0, 'aaa', 99.0), (1, 'bbb', 98.0), (2, 'ccc', 97.0), (3, 'ddd', 96.0), (4, 'eee', 95.0);
+insert into grade values (5, 'fff', 94.0), (6, 'ggg', 93.0), (7, 'hhh', 92.0), (8, 'iii', 91.0), (9, 'jjj', 90.0);
+insert into grades values (0, 'aa'), (1, 'bb'), (2, 'cc'), (3, 'dd'), (4, 'ee');
+insert into grades values (5, 'ff'), (6, 'gg'), (7, 'hh'), (8, 'ii'), (9, 'jj');
