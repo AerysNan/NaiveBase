@@ -1,13 +1,15 @@
 package query;
 
+import type.ComparatorType;
+
 public class Condition {
-    public Comparer comparer;
-    public Comparer comparee;
+    public Expression left;
+    public Expression right;
     public ComparatorType type;
 
-    public Condition(Comparer comparer, Comparer comparee, ComparatorType type) {
-        this.comparer = comparer;
-        this.comparee = comparee;
+    public Condition(Expression left, Expression right, ComparatorType type) {
+        this.left = left;
+        this.right = right;
         this.type = type;
     }
 }

@@ -78,6 +78,8 @@ public class Client {
         while (true) {
             System.out.print(">");
             String message = sc.nextLine();
+            if (message.isEmpty())
+                continue;
             if (message.contains("import")) {
                 String request = client.importSQLText(message);
                 if (request.length() == 0) continue;

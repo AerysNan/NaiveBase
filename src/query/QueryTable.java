@@ -1,77 +1,28 @@
 package query;
 
 import exception.ColumnNotFoundException;
-import exception.InvalidComparisionException;
 import schema.Column;
 import schema.Row;
-import schema.Table;
-import schema.Type;
+import type.ComparatorType;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 
 public abstract class QueryTable implements Iterator<Row> {
-    public LinkedList<Row> queue;
-    public LinkedList<Row> buffer;
-    public Condition whereCondition;
-    public boolean isFirst;
+    LinkedList<Row> queue;
+    LinkedList<Row> buffer;
+    Condition whereCondition;
+    boolean isFirst;
+    ArrayList<Column> columns;
 
-    public void figure() {
-    }
+    public abstract void figure();
 
     public void setWhereCondition(Condition whereCondition) {
         this.whereCondition = whereCondition;
     }
 
-    public static boolean staticTypeCheck(Condition whereCondition) {
-        assert whereCondition.comparer.type != ComparerType.COLUMN;
-        assert whereCondition.comparee.type != ComparerType.COLUMN;
-        switch (whereCondition.comparer.type) {
-        case NULL:
-            if (whereCondition.comparee.type.equals(ComparerType.NULL)) {
-                return whereCondition.type.equals(ComparatorType.EQ) || whereCondition.type.equals(ComparatorType.LE)
-                        || whereCondition.type.equals(ComparatorType.GE);
-            } else {
-                throw new InvalidComparisionException();
-            }
-        case STRING:
-            if (whereCondition.comparee.type.equals(ComparerType.STRING)) {
-                int result = whereCondition.comparer.value.compareTo(whereCondition.comparee.value);
-                return comparatorTypeCheck(whereCondition.type, result);
-            } else
-                throw new InvalidComparisionException();
-        case NUMBER:
-            if (whereCondition.comparee.type.equals(ComparerType.NUMBER)) {
-                Double comparer = (Double.parseDouble(String.valueOf(whereCondition.comparer.value)));
-                Double comparee = (Double.parseDouble(String.valueOf(whereCondition.comparee.value)));
-                int result = comparer.compareTo(comparee);
-                return comparatorTypeCheck(whereCondition.type, result);
-            } else
-                throw new InvalidComparisionException();
-        }
-        return false;
-    }
-
-    public static boolean comparatorTypeCheck(ComparatorType type, int result) {
-        switch (type) {
-        case NE:
-            return result != 0;
-        case EQ:
-            return result == 0;
-        case LT:
-            return result < 0;
-        case LE:
-            return result <= 0;
-        case GT:
-            return result > 0;
-        case GE:
-            return result >= 0;
-        }
-        return false;
-    }
-
-    public int columnFind(ArrayList<Column> columns, String name) {
+    int columnFind(ArrayList<Column> columns, String name) {
         int found = -1;
         for (int i = 0; i < columns.size(); i++) {
             if (name.equals(columns.get(i).getName())) {
@@ -83,9 +34,9 @@ public abstract class QueryTable implements Iterator<Row> {
         return found;
     }
 
-    public Condition swapCondition(Condition whereCondition) {
-        Comparer newComparer = new Comparer(whereCondition.comparee);
-        Comparer newComparee = new Comparer(whereCondition.comparer);
+    Condition swapCondition(Condition whereCondition) {
+        Expression left = new Expression(whereCondition.right);
+        Expression right = new Expression(whereCondition.left);
         ComparatorType newType = whereCondition.type;
         if (whereCondition.type == ComparatorType.GE) {
             newType = ComparatorType.LE;
@@ -96,18 +47,7 @@ public abstract class QueryTable implements Iterator<Row> {
         } else if (whereCondition.type == ComparatorType.LT) {
             newType = ComparatorType.GT;
         }
-        return new Condition(newComparer, newComparee, newType);
-    }
-
-    public void columnTypeCheck(Table table1, Table table2, int index1, int index2) {
-        if (!table1.columns.get(index1).getType().equals(Type.STRING)
-                && table2.columns.get(index2).getType().equals(Type.STRING)) {
-            throw new InvalidComparisionException();
-        }
-        if (table1.columns.get(index1).getType().equals(Type.STRING)
-                && !table2.columns.get(index2).getType().equals(Type.STRING)) {
-            throw new InvalidComparisionException();
-        }
+        return new Condition(left, right, newType);
     }
 
     @Override
@@ -122,14 +62,12 @@ public abstract class QueryTable implements Iterator<Row> {
                 figure();
                 isFirst = false;
             }
-            while (!queue.isEmpty()) {
+            while (!queue.isEmpty())
                 buffer.add(queue.poll());
-            }
             figure();
         }
-        if (buffer.isEmpty()) {
+        if (buffer.isEmpty())
             return null;
-        }
         return buffer.poll();
     }
 }

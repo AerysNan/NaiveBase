@@ -15,14 +15,14 @@ final class BPlusTreeInternalNode<K extends Comparable<K>, V> extends BPlusTreeN
         this.nodeSize = size;
     }
 
-    void childrenAdd(int index, BPlusTreeNode<K, V> node) {
+    private void childrenAdd(int index, BPlusTreeNode<K, V> node) {
         for (int i = nodeSize + 1; i > index; i--) {
             children.set(i, children.get(i - 1));
         }
         children.set(index, node);
     }
 
-    void childrenRemove(int index) {
+    private void childrenRemove(int index) {
         for (int i = index; i < nodeSize; i++) {
             children.set(i, children.get(i + 1));
         }
@@ -108,12 +108,12 @@ final class BPlusTreeInternalNode<K extends Comparable<K>, V> extends BPlusTreeN
         nodeSize = index + length + 1;
     }
 
-    BPlusTreeNode<K, V> searchChild(K key) {
+    private BPlusTreeNode<K, V> searchChild(K key) {
         int index = binarySearch(key);
         return children.get(index >= 0 ? index + 1 : -index - 1);
     }
 
-    void insertChild(K key, BPlusTreeNode<K, V> child) {
+    private void insertChild(K key, BPlusTreeNode<K, V> child) {
         int index = binarySearch(key);
         int childIndex = index >= 0 ? index + 1 : -index - 1;
         if (index >= 0) {
@@ -124,7 +124,7 @@ final class BPlusTreeInternalNode<K extends Comparable<K>, V> extends BPlusTreeN
         }
     }
 
-    void deleteChild(K key) {
+    private void deleteChild(K key) {
         int index = binarySearch(key);
         if (index >= 0) {
             childrenRemove(index + 1);
@@ -132,7 +132,7 @@ final class BPlusTreeInternalNode<K extends Comparable<K>, V> extends BPlusTreeN
         }
     }
 
-    BPlusTreeNode<K, V> getChildLeftSibling(K key) {
+    private BPlusTreeNode<K, V> getChildLeftSibling(K key) {
         int index = binarySearch(key);
         int childIndex = index >= 0 ? index + 1 : -index - 1;
         if (childIndex > 0)
@@ -140,7 +140,7 @@ final class BPlusTreeInternalNode<K extends Comparable<K>, V> extends BPlusTreeN
         return null;
     }
 
-    BPlusTreeNode<K, V> getChildRightSibling(K key) {
+    private BPlusTreeNode<K, V> getChildRightSibling(K key) {
         int index = binarySearch(key);
         int childIndex = index >= 0 ? index + 1 : -index - 1;
         if (childIndex < size())

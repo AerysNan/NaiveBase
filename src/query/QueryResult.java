@@ -14,7 +14,7 @@ public class QueryResult implements Iterator<QueryResult.QueryRecord> {
         int id;
         ArrayList<Entry> entries;
 
-        public QueryRecord(int id) {
+        QueryRecord(int id) {
             this.id = id;
             this.entries = new ArrayList<>();
         }
@@ -33,23 +33,21 @@ public class QueryResult implements Iterator<QueryResult.QueryRecord> {
         }
     }
 
-    ArrayList<Column> header;
-    ArrayList<Integer> index;
-    String[] selectProjects;
-    int queryResultNum;
+    private ArrayList<Column> header;
+    private ArrayList<Integer> index;
+    private int queryResultNum;
 
     public QueryResult(ArrayList<Column> header, String[] selectProjects) {
         this.header = header;
-        this.selectProjects = selectProjects;
         this.queryResultNum = 0;
         if (selectProjects != null) {
             this.index = new ArrayList<>();
-            for (int i = 0; i < selectProjects.length; i++) {
-                if (!hasColumn(selectProjects[i]))
-                    throw new ColumnNotFoundException(selectProjects[i]);
-                else {
-                    index.add(i);
-                }
+            for (String selectProject : selectProjects) {
+                int pos = getColumnIndex(selectProject);
+                if (pos < 0)
+                    throw new ColumnNotFoundException(selectProject);
+                else
+                    index.add(pos);
             }
         }
     }
@@ -58,22 +56,22 @@ public class QueryResult implements Iterator<QueryResult.QueryRecord> {
         QueryRecord record = new QueryRecord(++queryResultNum);
         if (index == null) {
             for (int i = 0; i < row.getEntries().size(); i++)
-                if (header.get(i).getName() != "uid")
+                if (!header.get(i).getName().equals("uid"))
                     record.add(row.getEntries().get(i));
         } else {
             for (int i = 0; i < index.size(); i++)
-                if (header.get(i).getName() != "uid")
+                if (!header.get(i).getName().equals("uid"))
                     record.add(row.getEntries().get(index.get(i)));
         }
         return record.toString();
     }
 
 
-    private boolean hasColumn(String name) {
-        for (Column c : header)
-            if (name.equals(c.getName()))
-                return true;
-        return false;
+    private int getColumnIndex(String name) {
+        for (int i = 0; i < header.size(); i++)
+            if (name.equals(header.get(i).getName()))
+                return i;
+        return -1;
     }
 
     @Override

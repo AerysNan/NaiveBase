@@ -1,13 +1,15 @@
 package schema;
 
+import type.ColumnType;
+
 public class Column implements Comparable<Column> {
     String name;
-    Type type;
+    ColumnType type;
     int primary;
     boolean notNull;
     int maxLength;
 
-    public Column(String name, Type type, int primary, boolean notNull, int maxLength) {
+    public Column(String name, ColumnType type, int primary, boolean notNull, int maxLength) {
         this.name = name;
         this.type = type;
         this.primary = primary;
@@ -19,7 +21,7 @@ public class Column implements Comparable<Column> {
         return this.name;
     }
 
-    public Type getType() {
+    public ColumnType getType() {
         return this.type;
     }
 

@@ -136,11 +136,11 @@ public class Manager {
         return database.tables.get(tableName).delete(deleteCondition);
     }
 
-    public String update(String tableName, String columnName, Comparer comparer, Condition condition) {
+    public String update(String tableName, String columnName, Expression expression, Condition condition) {
         Database database = databases.get(current);
         if (!database.tables.containsKey(tableName))
             throw new TableNotExistsException(tableName);
-        return database.tables.get(tableName).update(columnName, comparer, condition);
+        return database.tables.get(tableName).update(columnName, expression, condition);
     }
 
     private void recoverDatabases() {
