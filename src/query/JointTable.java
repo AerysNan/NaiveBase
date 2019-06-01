@@ -16,38 +16,43 @@ import java.util.LinkedList;
 
 public class JointTable extends QueryTable implements Iterator<Row> {
     class QueryRow extends Row {
-        QueryRow(Row leftRow, Row rightRow) {
-            super(0);
+        QueryRow(LinkedList<Row> rows) {
+            super(-1);
             this.entries = new ArrayList<>();
-            entries.addAll(leftRow.getEntries());
-            entries.addAll(rightRow.getEntries());
+            for (int i = rows.size() - 1; i >= 0; i--)
+                entries.addAll(rows.get(i).getEntries());
+        }
+        QueryRow(Row row1, Row row2) {
+            super(-1);
+            this.entries = new ArrayList<>();
+            entries.addAll(row1.getEntries());
+            entries.addAll(row2.getEntries());
         }
     }
 
-    public Table table1;
-    public Table table2;
+    private ArrayList<Iterator<Row>> iterators;
+    private ArrayList<Table> tables;
+    private LinkedList<Row> currentRows;
     private Logic joinLogic;
-    private Iterator<Row> iterator1;
-    private Iterator<Row> iterator2;
 
-
-    public JointTable(Table table1, Table table2, Logic joinLogic) {
-        this.table1 = table1;
-        this.table2 = table2;
+    public JointTable(ArrayList<Table> tables, Logic joinLogic) {
+        this.tables = tables;
+        this.iterators = new ArrayList<>();
+        this.currentRows = new LinkedList<>();
         this.joinLogic = joinLogic;
-        this.iterator1 = table1.iterator();
-        this.iterator2 = table2.iterator();
         this.buffer = new LinkedList<>();
         this.queue = new LinkedList<>();
         this.isFirst = true;
         this.columns = new ArrayList<>();
-        this.columns.addAll(table1.columns);
-        this.columns.addAll(table2.columns);
+        for (Table t : tables) {
+            this.columns.addAll(t.columns);
+            this.iterators.add(t.iterator());
+        }
     }
 
     @Override
     public void figure() {
-        if (joinLogic.terminal) {
+        if (joinLogic.terminal && tables.size() == 2) {
             Condition joinCondition = joinLogic.condition;
             if (joinCondition.type.equals(ComparatorType.EQ) && ((joinCondition.left.isSimpleColumn() && joinCondition.right.isConstExpression() ||
                     (joinCondition.right.isSimpleColumn() && joinCondition.left.isConstExpression())))) {
@@ -58,23 +63,49 @@ public class JointTable extends QueryTable implements Iterator<Row> {
                 return;
             }
         }
-        while (iterator1.hasNext()) {
-            Row leftRow = iterator1.next();
-            while (iterator2.hasNext()) {
-                Row rightRow = iterator2.next();
-                QueryRow row = new QueryRow(leftRow, rightRow);
-                if (failedLogic(joinLogic, row) || failedLogic(selectLogic, row))
-                    continue;
-                queue.add(row);
-            }
-            iterator2 = table2.iterator();
-            if (queue.size() == 0)
+        while (true) {
+            QueryRow queryRow = buildQueryRow();
+            if (queryRow == null)
+                return;
+            if (failedLogic(joinLogic, queryRow) || failedLogic(selectLogic, queryRow))
                 continue;
-            break;
+            queue.add(queryRow);
+            return;
+        }
+    }
+
+    private QueryRow buildQueryRow() {
+        if (currentRows.isEmpty()) {
+            for (Iterator<Row> iter : iterators) {
+                if (!iter.hasNext())
+                    return null;
+                currentRows.push(iter.next());
+            }
+            return new QueryRow(currentRows);
+        } else {
+            int index;
+            for (index = iterators.size() - 1; index >= 0; index--) {
+                currentRows.pop();
+                if (!iterators.get(index).hasNext())
+                    iterators.set(index, tables.get(index).iterator());
+                else break;
+            }
+            if (index < 0)
+                return null;
+            for (int i = index; i < iterators.size(); i++) {
+                if (!iterators.get(i).hasNext())
+                    return null;
+                currentRows.push(iterators.get(i).next());
+            }
+            return new QueryRow(currentRows);
         }
     }
 
     private void EQCompareFigure(Condition onCondition) {
+        Table table1 = tables.get(0);
+        Table table2 = tables.get(1);
+        Iterator<Row> iterator1 = iterators.get(0);
+        Iterator<Row> iterator2 = iterators.get(1);
         Comparer comparer = onCondition.left.comparer;
         ComparerType comparerType = Global.evalConstExpressionType(onCondition.right);
         Comparable value = Global.evalConstExpressionValue(onCondition.right);
@@ -146,8 +177,8 @@ public class JointTable extends QueryTable implements Iterator<Row> {
 
     private int getColumnIndex(String columnName) {
         int index = 0;
-        int found = 0;
         if (!columnName.contains(".")) {
+            int found = 0;
             for (int i = 0; i < columns.size(); i++) {
                 if (columnName.equals(columns.get(i).getName())) {
                     found++;
@@ -160,16 +191,22 @@ public class JointTable extends QueryTable implements Iterator<Row> {
                 throw new AmbiguousColumnNameException();
         } else {
             String[] tableInfo = splitColumnFullName(columnName);
-            if (tableInfo[0].equals(table1.tableName))
-                index = columnFind(table1.columns, tableInfo[1]);
-            else if (tableInfo[0].equals(table2.tableName))
-                index = columnFind(table2.columns, tableInfo[1]) + table1.columns.size();
-            else {
+            int offset = 0;
+            boolean found = false;
+            for (Table table : tables) {
+                if (tableInfo[0].equals(table.tableName)) {
+                    index = columnFind(table.columns, tableInfo[1]) + offset;
+                    found = true;
+                    break;
+                }
+                offset += table.columns.size();
+            }
+            if (!found) {
                 if (columnName.contains(".")) {
-                    String name = splitColumnFullName(columnName)[0];
-                    throw new TableNotExistsException(name);
+                    String tableName = splitColumnFullName(columnName)[0];
+                    throw new TableNotExistsException(tableName);
                 } else
-                    throw new TableNotExistsException(columnName);
+                    throw new ColumnNotFoundException(columnName);
             }
         }
         return index;
@@ -200,7 +237,7 @@ public class JointTable extends QueryTable implements Iterator<Row> {
                     Comparable v1 = evalExpressionValue(condition.left, row);
                     Comparable v2 = evalExpressionValue(condition.right, row);
                     if (t1 == ComparerType.STRING)
-                        return v1 != v2;
+                        return v1.compareTo(v2) != 0;
                     if (v1 == null || v2 == null)
                         throw new InvalidComparisionException();
                     double d1 = ((Number) v1).doubleValue();
@@ -218,7 +255,7 @@ public class JointTable extends QueryTable implements Iterator<Row> {
                     Comparable v1 = evalExpressionValue(condition.left, row);
                     Comparable v2 = evalExpressionValue(condition.right, row);
                     if (t1 == ComparerType.STRING)
-                        return v1 == v2;
+                        return v1.compareTo(v2) == 0;
                     if (v1 == null || v2 == null)
                         throw new InvalidComparisionException();
                     double d1 = ((Number) v1).doubleValue();

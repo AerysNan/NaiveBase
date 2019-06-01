@@ -98,7 +98,6 @@ public class Database {
     }
 
     public String select(String[] columnsProjected, QueryTable[] tablesQueried, Logic selectLogic) {
-        assert tablesQueried.length > 0;
         StringBuilder result = new StringBuilder();
         if (tablesQueried.length == 1) {
             if (tablesQueried[0] instanceof SimpleTable) {
@@ -114,9 +113,7 @@ public class Database {
                     result.append(queryResult.generateQueryRecord(row)).append("\n");
                 }
             } else {
-                ArrayList<Column> columns = new ArrayList<>();
-                columns.addAll(tables.get(((JointTable) tablesQueried[0]).table1.tableName).columns);
-                columns.addAll(tables.get(((JointTable) tablesQueried[0]).table2.tableName).columns);
+                ArrayList<Column> columns = tablesQueried[0].columns;
                 QueryResult queryResult = new QueryResult(columns, columnsProjected);
                 tablesQueried[0].setSelectLogic(selectLogic);
                 while (tablesQueried[0].hasNext()) {

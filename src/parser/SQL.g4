@@ -110,7 +110,8 @@ result_column
     | column_full_name;
 
 table_query :
-    table_name ( K_JOIN table_name K_ON multiple_condition )? ;
+    table_name
+    | table_name ( K_JOIN table_name )+ K_ON multiple_condition ;
 
 literal_value :
     NUMERIC_LITERAL

@@ -10,6 +10,7 @@ import type.ConstraintType;
 import schema.Manager;
 import type.*;
 
+import java.util.ArrayList;
 import java.util.StringJoiner;
 
 public class SQLCustomVisitor extends SQLBaseVisitor {
@@ -219,7 +220,11 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     @Override
     public String visitSelect_stmt(SQLParser.Select_stmtContext ctx) {
         // TODO: order by
-        return visitSelect_core(ctx.select_core());
+        try {
+            return visitSelect_core(ctx.select_core());
+        } catch (Exception e) {
+            return e.getMessage();
+        }
     }
 
     @Override
@@ -386,10 +391,13 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
 
     @Override
     public QueryTable visitTable_query(SQLParser.Table_queryContext ctx) {
-        if (ctx.K_JOIN() == null)
+        if (ctx.K_JOIN().size() == 0)
             return manager.getSingleJointTable(ctx.table_name(0).getText());
         Logic logic = visitMultiple_condition(ctx.multiple_condition());
-        return manager.getMultipleJointTable(ctx.table_name(0).getText(), ctx.table_name(1).getText(), logic);
+        ArrayList<String> tableNames = new ArrayList<>();
+        for (SQLParser.Table_nameContext subCtx : ctx.table_name())
+            tableNames.add(subCtx.getText());
+        return manager.getMultipleJointTable(tableNames, logic);
     }
 
     @Override
