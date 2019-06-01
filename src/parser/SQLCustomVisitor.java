@@ -65,13 +65,13 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
 
     @Override
     public String visitCreate_db_stmt(SQLParser.Create_db_stmtContext ctx) {
-        String name = ctx.database_name().getText();
+        String databaseName = ctx.database_name().getText();
         try {
-            manager.createDatabase(name);
+            manager.createDatabase(databaseName);
         } catch (Exception e) {
             return e.getMessage();
         }
-        return "Created database " + name + ".";
+        return "Created database " + databaseName + ".";
     }
 
     @Override

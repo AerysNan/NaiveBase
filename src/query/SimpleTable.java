@@ -6,7 +6,7 @@ import schema.*;
 import java.util.*;
 
 public class SimpleTable extends QueryTable implements Iterator<Row> {
-    public Table table;
+    private Table table;
 
     private Iterator<Row> iterator;
 
@@ -191,5 +191,9 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
                 return;
             queue.addAll(rows);
         }
+    }
+
+    public Table getTable() {
+        return table;
     }
 }

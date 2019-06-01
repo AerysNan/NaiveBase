@@ -68,7 +68,7 @@ public class DatabaseTest {
         Expression right = buildSimpleNumberExpression("2");
         Condition condition = new Condition(left, right, ComparatorType.EQ);
         String result = database.select(null, tablesQueried, buildSimpleLogic(condition));
-        assertEquals("--EMPTY--", result);
+        assertEquals("No Rows.", result);
     }
 
     @Test
@@ -79,7 +79,7 @@ public class DatabaseTest {
         Expression right = buildSimpleNumberExpression("1000");
         Condition condition = new Condition(left, right, ComparatorType.GT);
         String result = database.select(null, tablesQueried, buildSimpleLogic(condition));
-        assertEquals("--EMPTY--", result);
+        assertEquals("No Rows.", result);
     }
 
     @Test
@@ -145,7 +145,7 @@ public class DatabaseTest {
         Expression right = buildSimpleNumberExpression("1000");
         Condition condition = new Condition(left, right, ComparatorType.GT);
         String result = database.select(null, tablesQueried, buildSimpleLogic(condition));
-        assertEquals("--EMPTY--", result);
+        assertEquals("No Rows.", result);
     }
 
     @Test
@@ -167,7 +167,7 @@ public class DatabaseTest {
         Expression right = buildSimpleColumnExpression("score");
         Condition condition = new Condition(left, right, ComparatorType.LT);
         String result = database.select(null, tablesQueried, buildSimpleLogic(condition));
-        assertEquals("--EMPTY--", result);
+        assertEquals("No Rows.", result);
     }
 
     @Test
@@ -178,7 +178,7 @@ public class DatabaseTest {
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = buildSimpleJoinTable("grade", "grades", onCondition);
         String result = database.select(null, tablesQueried, null);
-        assertEquals("--EMPTY--", result);
+        assertEquals("No Rows.", result);
     }
 
     @Test
@@ -200,7 +200,7 @@ public class DatabaseTest {
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = buildSimpleJoinTable("grade", "grades", onCondition);
         String result = database.select(null, tablesQueried, null);
-        assertEquals("--EMPTY--", result);
+        assertEquals("No Rows.", result);
     }
 
     @Test
@@ -277,7 +277,7 @@ public class DatabaseTest {
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = buildSimpleJoinTable("grade", "grades", onCondition);
         String result = database.select(null, tablesQueried, null);
-        assertEquals("--EMPTY--", result);
+        assertEquals("No Rows.", result);
     }
 
     @Test

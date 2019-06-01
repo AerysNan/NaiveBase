@@ -158,7 +158,7 @@ public class Table implements Iterable<Row> {
                 CompositeKey compositeKey = getCompositeKey(new ArrayList<>(Arrays.asList(entries)));
                 if (compositeKeyMap.containsKey(compositeKey))
                     throw new DuplicateKeyException();
-                compositeKeyMap.put(getCompositeKey(new ArrayList<>(Arrays.asList(entries))), uidEntry);
+                compositeKeyMap.put(compositeKey, uidEntry);
             }
         }
         Row row = new Row(entries, pageNum);

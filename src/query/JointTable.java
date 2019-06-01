@@ -188,7 +188,7 @@ public class JointTable extends QueryTable implements Iterator<Row> {
             if (found < 1)
                 throw new ColumnNotFoundException(columnName);
             if (found > 1)
-                throw new AmbiguousColumnNameException();
+                throw new AmbiguousColumnNameException(columnName);
         } else {
             String[] tableInfo = splitColumnFullName(columnName);
             int offset = 0;
@@ -202,11 +202,7 @@ public class JointTable extends QueryTable implements Iterator<Row> {
                 offset += table.columns.size();
             }
             if (!found) {
-                if (columnName.contains(".")) {
-                    String tableName = splitColumnFullName(columnName)[0];
-                    throw new TableNotExistsException(tableName);
-                } else
-                    throw new ColumnNotFoundException(columnName);
+                throw new TableNotExistsException(tableInfo[0]);
             }
         }
         return index;
@@ -384,5 +380,9 @@ public class JointTable extends QueryTable implements Iterator<Row> {
         if (tableInfo.length != 2)
             throw new ColumnNameFormatException();
         return tableInfo;
+    }
+
+    public ArrayList<Table> getTables() {
+        return tables;
     }
 }
