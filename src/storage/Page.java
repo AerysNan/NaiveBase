@@ -49,15 +49,18 @@ public class Page {
         return this.size;
     }
 
-    public int deleteRow(Entry entry, int size) {
+    public void deleteRow(Entry entry, int size) {
         primaryEntries.remove(entry);
         this.size -= size;
-        return this.size;
     }
 
-    public int updateRow(int oldSize, int newSize) {
+    public void updateSize(int oldSize, int newSize) {
         this.size -= oldSize;
         this.size += newSize;
-        return this.size;
+    }
+
+    public void updatePrimaryEntry(Entry oldEntry, Entry newEntry) {
+        primaryEntries.remove(oldEntry);
+        primaryEntries.add(newEntry);
     }
 }
