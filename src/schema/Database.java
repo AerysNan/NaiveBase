@@ -9,6 +9,7 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.ArrayList;
+import java.util.StringJoiner;
 
 import static global.Global.*;
 
@@ -98,32 +99,31 @@ public class Database {
     }
 
     public String select(String[] columnsProjected, QueryTable[] tablesQueried, Logic selectLogic) {
-        StringBuilder result = new StringBuilder();
+        StringJoiner result = new StringJoiner("\n");
         if (tablesQueried.length == 1) {
             if (tablesQueried[0] instanceof SimpleTable) {
-                QueryResult queryResult = new QueryResult(tables.get((((SimpleTable) tablesQueried[0]).table.tableName)).columns, columnsProjected);
+                QueryResult queryResult = new QueryResult(((SimpleTable) tablesQueried[0]).getTable(), columnsProjected);
                 tablesQueried[0].setSelectLogic(selectLogic);
                 while ((tablesQueried[0]).hasNext()) {
                     Row row = tablesQueried[0].next();
                     if (row == null) {
                         if (result.length() == 0)
-                            result.append("--EMPTY--");
+                            result.add("No Rows.");
                         break;
                     }
-                    result.append(queryResult.generateQueryRecord(row)).append("\n");
+                    result.add(queryResult.generateQueryRecord(row));
                 }
             } else {
-                ArrayList<Column> columns = tablesQueried[0].columns;
-                QueryResult queryResult = new QueryResult(columns, columnsProjected);
+                QueryResult queryResult = new QueryResult(((JointTable) tablesQueried[0]).getTables(), columnsProjected);
                 tablesQueried[0].setSelectLogic(selectLogic);
                 while (tablesQueried[0].hasNext()) {
                     Row row = tablesQueried[0].next();
                     if (row == null) {
                         if (result.length() == 0)
-                            result.append("--EMPTY--");
+                            result.add("No Rows.");
                         break;
                     }
-                    result.append(queryResult.generateQueryRecord(row)).append("\n");
+                    result.add(queryResult.generateQueryRecord(row));
                 }
             }
             return result.toString();

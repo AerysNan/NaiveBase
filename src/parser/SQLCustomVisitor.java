@@ -65,7 +65,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
 
     @Override
     public String visitCreate_db_stmt(SQLParser.Create_db_stmtContext ctx) {
-        String name = ctx.database_name().getText();
+        String name = ctx.database_name().getText().toLowerCase();
         try {
             manager.createDatabase(name);
         } catch (Exception e) {
@@ -76,21 +76,21 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
 
     @Override
     public String visitDrop_db_stmt(SQLParser.Drop_db_stmtContext ctx) {
-        String name = ctx.database_name().getText();
+        String databaseName = ctx.database_name().getText().toLowerCase();
         try {
             if (ctx.K_IF() != null && ctx.K_EXISTS() != null)
-                manager.deleteDatabaseIfExist(ctx.database_name().getText());
+                manager.deleteDatabaseIfExist(databaseName);
             else
-                manager.deleteDatabase(ctx.database_name().getText());
+                manager.deleteDatabase(databaseName);
         } catch (Exception e) {
             return e.getMessage();
         }
-        return "Dropped database " + name + ".";
+        return "Dropped database " + databaseName + ".";
     }
 
     @Override
     public String visitCreate_table_stmt(SQLParser.Create_table_stmtContext ctx) {
-        String name = ctx.table_name().getText();
+        String name = ctx.table_name().getText().toLowerCase();
         int n = ctx.column_def().size();
         Column[] columns = new Column[n];
         int i = 0;
@@ -132,18 +132,18 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
 
     @Override
     public String visitUse_db_stmt(SQLParser.Use_db_stmtContext ctx) {
-        String name = ctx.database_name().getText();
+        String databaseName = ctx.database_name().getText().toLowerCase();
         try {
-            manager.switchDatabase(ctx.database_name().getText());
+            manager.switchDatabase(databaseName);
         } catch (Exception e) {
             return e.getMessage();
         }
-        return "Switched to database " + name + ".";
+        return "Switched to database " + databaseName + ".";
     }
 
     @Override
     public String visitDelete_stmt(SQLParser.Delete_stmtContext ctx) {
-        String tableName = ctx.table_name().getText();
+        String tableName = ctx.table_name().getText().toLowerCase();
         if (ctx.K_WHERE() == null)
             return manager.delete(tableName, null);
         Logic logic = visitMultiple_condition(ctx.multiple_condition());
@@ -156,16 +156,16 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
 
     @Override
     public String visitDrop_table_stmt(SQLParser.Drop_table_stmtContext ctx) {
-        String name = ctx.table_name().getText();
+        String tableName = ctx.table_name().getText().toLowerCase();
         try {
             if (ctx.K_IF() != null && ctx.K_EXISTS() != null)
-                manager.deleteTableIfExist(ctx.table_name().getText());
+                manager.deleteTableIfExist(tableName);
             else
-                manager.deleteTable(ctx.table_name().getText());
+                manager.deleteTable(tableName);
         } catch (Exception e) {
             return e.getMessage();
         }
-        return "Dropped table " + name + ".";
+        return "Dropped table " + tableName + ".";
     }
 
     @Override
@@ -186,17 +186,17 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
 
     @Override
     public String visitShow_table_stmt(SQLParser.Show_table_stmtContext ctx) {
-        return manager.showTables(ctx.database_name().getText());
+        return manager.showTables(ctx.database_name().getText().toLowerCase());
     }
 
     @Override
     public String visitInsert_stmt(SQLParser.Insert_stmtContext ctx) {
-        String tableName = ctx.table_name().getText();
+        String tableName = ctx.table_name().getText().toLowerCase();
         String[] columnNames = null;
         if (ctx.column_name() != null && ctx.column_name().size() != 0) {
             columnNames = new String[ctx.column_name().size()];
             for (int i = 0; i < ctx.column_name().size(); i++)
-                columnNames[i] = ctx.column_name(i).getText();
+                columnNames[i] = ctx.column_name(i).getText().toLowerCase();
         }
         for (SQLParser.Value_entryContext subCtx : ctx.value_entry()) {
             String[] values = visitValue_entry(subCtx);
@@ -233,7 +233,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
         int columnCount = ctx.result_column().size();
         String[] columnsProjected = new String[columnCount];
         for (int i = 0; i < columnCount; i++) {
-            String columnName = ctx.result_column(i).getText();
+            String columnName = ctx.result_column(i).getText().toLowerCase();
             if (columnName.equals("*")) {
                 columnsProjected = null;
                 break;
@@ -256,8 +256,8 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
 
     @Override
     public String visitUpdate_stmt(SQLParser.Update_stmtContext ctx) {
-        String tableName = ctx.table_name().getText();
-        String columnName = ctx.column_name().getText();
+        String tableName = ctx.table_name().getText().toLowerCase();
+        String columnName = ctx.column_name().getText().toLowerCase();
         Expression expression = visitExpression(ctx.expression());
         if (ctx.K_WHERE() == null)
             return manager.update(tableName, columnName, expression, null);
@@ -281,7 +281,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
                 notNull = true;
             notNull = notNull || (primary > 0);
         }
-        String name = ctx.column_name().getText();
+        String name = ctx.column_name().getText().toLowerCase();
 
         Pair<ColumnType, Integer> type = visitType_name(ctx.type_name());
         ColumnType columnType = type.getKey();
@@ -302,7 +302,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
             return new Pair<>(ColumnType.DOUBLE, -1);
         if (ctx.T_STRING() != null) {
             try {
-                return new Pair<>(ColumnType.STRING, Integer.parseInt(ctx.NUMERIC_LITERAL().getText()));
+                return new Pair<>(ColumnType.STRING, Integer.parseInt(ctx.NUMERIC_LITERAL().getText().toLowerCase()));
             } catch (Exception e) {
                 throw new ValueFormatException();
             }
@@ -365,14 +365,14 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     @Override
     public Comparer visitComparer(SQLParser.ComparerContext ctx) {
         if (ctx.column_full_name() != null)
-            return new Comparer(ComparerType.COLUMN, ctx.column_full_name().getText());
+            return new Comparer(ComparerType.COLUMN, ctx.column_full_name().getText().toLowerCase());
         LiteralType type = visitLiteral_value(ctx.literal_value());
         String text = ctx.literal_value().getText();
         switch (type) {
             case NUMBER:
                 return new Comparer(ComparerType.NUMBER, text);
             case STRING:
-                return new Comparer(ComparerType.STRING, text.substring(1, text.length() - 1));
+                return new Comparer(ComparerType.STRING, text.substring(1, text.length() - 1).toLowerCase());
             case NULL:
                 return new Comparer(ComparerType.NULL, null);
             default:
@@ -385,18 +385,18 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
         int n = ctx.column_name().size();
         String[] compositeNames = new String[n];
         for (int i = 0; i < n; i++)
-            compositeNames[i] = ctx.column_name(i).getText();
+            compositeNames[i] = ctx.column_name(i).getText().toLowerCase();
         return compositeNames;
     }
 
     @Override
     public QueryTable visitTable_query(SQLParser.Table_queryContext ctx) {
         if (ctx.K_JOIN().size() == 0)
-            return manager.getSingleJointTable(ctx.table_name(0).getText());
+            return manager.getSingleJointTable(ctx.table_name(0).getText().toLowerCase());
         Logic logic = visitMultiple_condition(ctx.multiple_condition());
         ArrayList<String> tableNames = new ArrayList<>();
         for (SQLParser.Table_nameContext subCtx : ctx.table_name())
-            tableNames.add(subCtx.getText());
+            tableNames.add(subCtx.getText().toLowerCase());
         return manager.getMultipleJointTable(tableNames, logic);
     }
 
