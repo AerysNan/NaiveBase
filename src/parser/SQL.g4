@@ -7,18 +7,18 @@ sql_stmt_list :
     ';'* sql_stmt ( ';'+ sql_stmt )* ';'* ;
 
 sql_stmt :
-    create_table_stmt    # createTableStatement
-    | create_db_stmt     # createDatabaseStatement
-    | drop_db_stmt       # dropDatabaseStatement
-    | delete_stmt        # deleteStatement
-    | drop_table_stmt    # dropTableStatement
-    | insert_stmt        # insertStatement
-    | select_stmt        # selectStatement
-    | use_db_stmt        # useStatement
-    | show_db_stmt       # showDatabaseStatement
-    | show_table_stmt    # showTableStatement
-    | quit_stmt          # quitStatement
-    | update_stmt        # updateStatement ;
+    create_table_stmt
+    | create_db_stmt
+    | drop_db_stmt
+    | delete_stmt
+    | drop_table_stmt
+    | insert_stmt
+    | select_stmt
+    | use_db_stmt
+    | show_db_stmt
+    | show_table_stmt
+    | quit_stmt
+    | update_stmt ;
 
 create_db_stmt :
     K_CREATE K_DATABASE database_name ;
@@ -70,15 +70,15 @@ column_def :
     column_name type_name column_constraint* ;
 
 type_name :
-    T_INT                              # typeInt
-    | T_LONG                           # typeLong
-    | T_FLOAT                          # typeFloat
-    | T_DOUBLE                         # typeDouble
-    | T_STRING '(' NUMERIC_LITERAL ')' # typeString ;
+    T_INT
+    | T_LONG
+    | T_FLOAT
+    | T_DOUBLE
+    | T_STRING '(' NUMERIC_LITERAL ')' ;
 
 column_constraint :
-    K_PRIMARY K_KEY     # primaryKeyConstraint
-    | K_NOT K_NULL      # notNullConstraint ;
+    K_PRIMARY K_KEY
+    | K_NOT K_NULL ;
 
 condition :
     expression comparator expression;
