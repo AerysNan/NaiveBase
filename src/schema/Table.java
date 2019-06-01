@@ -80,11 +80,6 @@ public class Table implements Iterable<Row> {
             } catch (Exception e) {
                 throw new InternalException("failed to open table data file.");
             }
-            if (rows == null || rows.size() == 0) {
-                File unusedFile = new File(dataPath + f.getName());
-                unusedFile.delete();
-                continue;
-            }
             int pageID = rows.get(0).getPageID();
             Page page = new Page(databaseName, tableName, pageID);
             for (Row row : rows) {
@@ -248,6 +243,7 @@ public class Table implements Iterable<Row> {
                 continue;
             count++;
             Entry key = row.getEntries().get(primaryIndex);
+            pages.get(row.getPageID()).deleteRow(key, row.toString().length());
             index.remove(key);
             for (int i = 0; i < columns.size(); i++) {
                 if (columns.get(i).primary == 1)
@@ -290,6 +286,7 @@ public class Table implements Iterable<Row> {
             if (failedLogic(logic, row))
                 continue;
             count++;
+            int oldSize = row.toString().length();
             Entry oldEntry = row.getEntries().get(columnIndex);
             Entry newEntry = new Entry(columnIndex, comparerValueToEntryValue(evalExpressionValue(expression, row), columnIndex));
             if (column.primary == 1) {
@@ -297,6 +294,7 @@ public class Table implements Iterable<Row> {
                     if (i != primaryIndex)
                         deleteSecondaryIndex(row, i);
                 row.entries.set(columnIndex, newEntry);
+                pages.get(row.getPageID()).updatePrimaryEntry(oldEntry, newEntry);
                 if (index.containsKey(newEntry))
                     index.update(newEntry, row);
                 else {
@@ -311,6 +309,8 @@ public class Table implements Iterable<Row> {
                 row.entries.set(columnIndex, newEntry);
                 insertSecondaryIndex(row, columnIndex);
             }
+            int newSize = row.toString().length();
+            pages.get(row.getPageID()).updateSize(oldSize, newSize);
         }
         return "Updated " + count + " rows.";
     }
