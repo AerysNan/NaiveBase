@@ -2,12 +2,14 @@ package schema;
 
 import exception.*;
 import index.BPlusTree;
+import query.Logic;
 import type.ComparatorType;
 import type.ComparerType;
 import query.Condition;
 import query.Expression;
 import storage.Page;
 import type.ColumnType;
+import type.LogicalOpType;
 
 import java.io.*;
 import java.util.*;
@@ -237,12 +239,12 @@ public class Table implements Iterable<Row> {
         return result;
     }
 
-    String delete(Condition deleteCondition) {
+    String delete(Logic logic) {
         Iterator<Row> iterator = index.iterator();
         int count = 0;
         while (iterator.hasNext()) {
             Row row = iterator.next();
-            if (failedCondition(deleteCondition, row))
+            if (failedLogic(logic, row))
                 continue;
             count++;
             Entry key = row.getEntries().get(primaryIndex);
@@ -256,7 +258,7 @@ public class Table implements Iterable<Row> {
         return "Deleted " + count + " rows.";
     }
 
-    String update(String columnName, Expression expression, Condition updateCondition) {
+    String update(String columnName, Expression expression, Logic logic) {
         int columnIndex = -1;
         for (int i = 0; i < columns.size(); i++) {
             if (columns.get(i).name.equals(columnName)) {
@@ -285,7 +287,7 @@ public class Table implements Iterable<Row> {
         }
         int count = 0;
         for (Row row : index) {
-            if (failedCondition(updateCondition, row))
+            if (failedLogic(logic, row))
                 continue;
             count++;
             Entry oldEntry = row.getEntries().get(columnIndex);
@@ -434,7 +436,17 @@ public class Table implements Iterable<Row> {
         times.put(pageID, System.currentTimeMillis());
     }
 
-    public boolean failedCondition(Condition condition, Row row) {
+    public boolean failedLogic(Logic logic, Row row) {
+        if (logic == null)
+            return false;
+        if (logic.terminal)
+            return failedCondition(logic.condition, row);
+        if (logic.logicalOpType == LogicalOpType.AND)
+            return failedLogic(logic.left, row) || failedLogic(logic.right, row);
+        return failedLogic(logic.left, row) && failedLogic(logic.right, row);
+    }
+
+    private boolean failedCondition(Condition condition, Row row) {
         if (condition == null) {
             return false;
         } else {
@@ -605,7 +617,7 @@ public class Table implements Iterable<Row> {
                 throw new InvalidExpressionException();
             double d1 = ((Number) v1).doubleValue();
             double d2 = ((Number) v2).doubleValue();
-            switch (expression.operatorType) {
+            switch (expression.numericOpType) {
                 case ADD:
                     return d1 + d2;
                 case DIV:

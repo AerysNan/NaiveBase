@@ -34,7 +34,7 @@ use_db_stmt :
     K_USE database_name;
 
 delete_stmt :
-    K_DELETE K_FROM table_name ( K_WHERE condition )? ;
+    K_DELETE K_FROM table_name ( K_WHERE multiple_condition )? ;
 
 drop_table_stmt :
     K_DROP K_TABLE ( K_IF K_EXISTS )? table_name ;
@@ -60,11 +60,11 @@ select_stmt :
 
 select_core :
     K_SELECT ( K_DISTINCT | K_ALL )? result_column ( ',' result_column )*
-        K_FROM table_query ( ',' table_query )* ( K_WHERE condition )? ;
+        K_FROM table_query ( ',' table_query )* ( K_WHERE multiple_condition )? ;
 
 update_stmt :
     K_UPDATE table_name
-        K_SET column_name '=' expression ( K_WHERE condition )? ;
+        K_SET column_name '=' expression ( K_WHERE multiple_condition )? ;
 
 column_def :
     column_name type_name column_constraint* ;
@@ -79,6 +79,11 @@ type_name :
 column_constraint :
     K_PRIMARY K_KEY
     | K_NOT K_NULL ;
+
+multiple_condition :
+    condition
+    | multiple_condition AND multiple_condition
+    | multiple_condition OR multiple_condition ;
 
 condition :
     expression comparator expression;
@@ -105,7 +110,7 @@ result_column
     | column_full_name;
 
 table_query :
-    table_name ( K_JOIN table_name K_ON condition )? ;
+    table_name ( K_JOIN table_name K_ON multiple_condition )? ;
 
 literal_value :
     NUMERIC_LITERAL
@@ -135,6 +140,9 @@ ADD : '+';
 SUB : '-';
 MUL : '*';
 DIV : '/';
+
+AND : '&&';
+OR : '||';
 
 T_INT : I N T;
 T_LONG : L O N G;

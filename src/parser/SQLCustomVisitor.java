@@ -2,16 +2,13 @@ package parser;
 
 import exception.ColumnNotFoundException;
 import exception.ValueFormatException;
-import global.LiteralType;
+import type.LiteralType;
 import javafx.util.Pair;
 import query.*;
 import schema.Column;
-import schema.Constraint;
+import type.ConstraintType;
 import schema.Manager;
-import type.ColumnType;
-import type.ComparatorType;
-import type.ComparerType;
-import type.OperatorType;
+import type.*;
 
 import java.util.StringJoiner;
 
@@ -148,9 +145,9 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
         String tableName = ctx.table_name().getText();
         if (ctx.K_WHERE() == null)
             return manager.delete(tableName, null);
-        Condition condition = visitCondition(ctx.condition());
+        Logic logic = visitMultiple_condition(ctx.multiple_condition());
         try {
-            return manager.delete(tableName, condition);
+            return manager.delete(tableName, logic);
         } catch (Exception e) {
             return e.getMessage();
         }
@@ -242,11 +239,11 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
         QueryTable[] tablesQueried = new QueryTable[queryCount];
         for (int i = 0; i < columnCount; i++)
             tablesQueried[i] = visitTable_query(ctx.table_query(i));
-        Condition whereCondition = null;
+        Logic logic = null;
         if (ctx.K_WHERE() != null)
-            whereCondition = visitCondition(ctx.condition());
+            logic = visitMultiple_condition(ctx.multiple_condition());
         try {
-            return manager.select(columnsProjected, tablesQueried, whereCondition);
+            return manager.select(columnsProjected, tablesQueried, logic);
         } catch (Exception e) {
             return e.getMessage();
         }
@@ -259,9 +256,9 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
         Expression expression = visitExpression(ctx.expression());
         if (ctx.K_WHERE() == null)
             return manager.update(tableName, columnName, expression, null);
-        Condition condition = visitCondition(ctx.condition());
+        Logic logic = visitMultiple_condition(ctx.multiple_condition());
         try {
-            return manager.update(tableName, columnName, expression, condition);
+            return manager.update(tableName, columnName, expression, logic);
         } catch (Exception e) {
             return e.getMessage();
         }
@@ -272,10 +269,10 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
         boolean notNull = false;
         int primary = 0;
         for (SQLParser.Column_constraintContext subCtx : ctx.column_constraint()) {
-            Constraint constraint = visitColumn_constraint(subCtx);
-            if (constraint.equals(Constraint.PRIMARY))
+            ConstraintType constraintType = visitColumn_constraint(subCtx);
+            if (constraintType.equals(ConstraintType.PRIMARY))
                 primary = 1;
-            else if (constraint.equals(Constraint.NOTNULL))
+            else if (constraintType.equals(ConstraintType.NOTNULL))
                 notNull = true;
             notNull = notNull || (primary > 0);
         }
@@ -309,11 +306,11 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     }
 
     @Override
-    public Constraint visitColumn_constraint(SQLParser.Column_constraintContext ctx) {
+    public ConstraintType visitColumn_constraint(SQLParser.Column_constraintContext ctx) {
         if (ctx.K_PRIMARY() != null)
-            return Constraint.PRIMARY;
+            return ConstraintType.PRIMARY;
         if (ctx.K_NULL() != null)
-            return Constraint.NOTNULL;
+            return ConstraintType.NOTNULL;
         return null;
     }
 
@@ -348,15 +345,15 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
             return new Expression(visitComparer(ctx.comparer()));
         Expression left = visitExpression(ctx.expression(0));
         Expression right = visitExpression(ctx.expression(1));
-        OperatorType operatorType = null;
+        NumericOpType operatorType = null;
         if (ctx.ADD() != null)
-            operatorType = OperatorType.ADD;
+            operatorType = NumericOpType.ADD;
         if (ctx.SUB() != null)
-            operatorType = OperatorType.SUB;
+            operatorType = NumericOpType.SUB;
         if (ctx.MUL() != null)
-            operatorType = OperatorType.MUL;
+            operatorType = NumericOpType.MUL;
         if (ctx.DIV() != null)
-            operatorType = OperatorType.DIV;
+            operatorType = NumericOpType.DIV;
         return new Expression(left, right, operatorType);
     }
 
@@ -391,8 +388,8 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     public QueryTable visitTable_query(SQLParser.Table_queryContext ctx) {
         if (ctx.K_JOIN() == null)
             return manager.getSingleJointTable(ctx.table_name(0).getText());
-        Condition whereCondition = visitCondition(ctx.condition());
-        return manager.getMultipleJointTable(ctx.table_name(0).getText(), ctx.table_name(1).getText(), whereCondition);
+        Logic logic = visitMultiple_condition(ctx.multiple_condition());
+        return manager.getMultipleJointTable(ctx.table_name(0).getText(), ctx.table_name(1).getText(), logic);
     }
 
     @Override
@@ -404,5 +401,16 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
         if (ctx.K_NULL() != null)
             return LiteralType.NULL;
         return null;
+    }
+
+    @Override
+    public Logic visitMultiple_condition(SQLParser.Multiple_conditionContext ctx) {
+        if (ctx.condition() != null)
+            return new Logic(visitCondition(ctx.condition()));
+        LogicalOpType logicalOpType;
+        if (ctx.AND() != null)
+            logicalOpType = LogicalOpType.AND;
+        else logicalOpType = LogicalOpType.OR;
+        return new Logic(visitMultiple_condition(ctx.multiple_condition(0)), visitMultiple_condition(ctx.multiple_condition(1)), logicalOpType);
     }
 }

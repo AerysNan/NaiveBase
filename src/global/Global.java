@@ -28,7 +28,7 @@ public class Global {
                 throw new InvalidExpressionException();
             double d1 = ((Number) v1).doubleValue();
             double d2 = ((Number) v2).doubleValue();
-            switch (expression.operatorType) {
+            switch (expression.numericOpType) {
                 case ADD:
                     return d1 + d2;
                 case DIV:

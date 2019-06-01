@@ -12,14 +12,14 @@ import java.util.LinkedList;
 public abstract class QueryTable implements Iterator<Row> {
     LinkedList<Row> queue;
     LinkedList<Row> buffer;
-    Condition whereCondition;
+    Logic selectLogic;
     boolean isFirst;
     ArrayList<Column> columns;
 
     public abstract void figure();
 
-    public void setWhereCondition(Condition whereCondition) {
-        this.whereCondition = whereCondition;
+    public void setSelectLogic(Logic selectLogic) {
+        this.selectLogic = selectLogic;
     }
 
     int columnFind(ArrayList<Column> columns, String name) {
