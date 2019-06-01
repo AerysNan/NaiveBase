@@ -2,6 +2,7 @@ package schema;
 
 import exception.*;
 import query.*;
+
 import java.io.*;
 import java.util.HashMap;
 
@@ -125,22 +126,22 @@ public class Manager {
         return sb.toString();
     }
 
-    public String select(String[] columnsProjected, QueryTable[] tablesQueried, Condition whereCondition) {
-        return databases.get(current).select(columnsProjected, tablesQueried, whereCondition);
+    public String select(String[] columnsProjected, QueryTable[] tablesQueried, Logic selectLogic) {
+        return databases.get(current).select(columnsProjected, tablesQueried, selectLogic);
     }
 
-    public String delete(String tableName, Condition deleteCondition) {
-        Database database = databases.get(current);
-        if(!database.tables.containsKey(tableName))
-            throw new TableNotExistsException(tableName);
-        return database.tables.get(tableName).delete(deleteCondition);
-    }
-
-    public String update(String tableName, String columnName, Expression expression, Condition condition) {
+    public String delete(String tableName, Logic logic) {
         Database database = databases.get(current);
         if (!database.tables.containsKey(tableName))
             throw new TableNotExistsException(tableName);
-        return database.tables.get(tableName).update(columnName, expression, condition);
+        return database.tables.get(tableName).delete(logic);
+    }
+
+    public String update(String tableName, String columnName, Expression expression, Logic logic) {
+        Database database = databases.get(current);
+        if (!database.tables.containsKey(tableName))
+            throw new TableNotExistsException(tableName);
+        return database.tables.get(tableName).update(columnName, expression, logic);
     }
 
     private void recoverDatabases() {
@@ -188,12 +189,12 @@ public class Manager {
         return new SimpleTable(database.tables.get(tableName));
     }
 
-    public JointTable getMultipleJointTable(String tableName1, String tableName2, Condition onCondition) {
+    public JointTable getMultipleJointTable(String tableName1, String tableName2, Logic logic) {
         Database database = databases.get(current);
         if (!database.tables.containsKey(tableName1))
             throw new TableNotExistsException(tableName1);
         if (!database.tables.containsKey(tableName2))
             throw new TableNotExistsException(tableName2);
-        return new JointTable(database.tables.get(tableName1), database.tables.get(tableName2), onCondition);
+        return new JointTable(database.tables.get(tableName1), database.tables.get(tableName2), logic);
     }
 }

@@ -23,26 +23,31 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
 
     @Override
     public void figure() {
-        if (whereCondition == null) {
+        if (selectLogic == null) {
             if (iterator.hasNext())
                 queue.add(iterator.next());
         } else {
-            if (whereCondition.left.isConstExpression() && whereCondition.right.isConstExpression()) {
-                if (!Global.failedConstCondition(whereCondition))
-                    if (iterator.hasNext())
-                        queue.add(iterator.next());
-            } else if (whereCondition.left.isSimpleColumn() && whereCondition.right.isConstExpression())
-                getRowsFromColumnComparision(table, whereCondition);
-            else if (whereCondition.right.isSimpleColumn() && whereCondition.left.isConstExpression())
-                getRowsFromColumnComparision(table, swapCondition(whereCondition));
-            else {
-                while (iterator.hasNext()) {
-                    Row row = iterator.next();
-                    if (table.failedCondition(whereCondition, row))
-                        continue;
-                    queue.add(row);
-                    break;
+            if (selectLogic.terminal) {
+                Condition selectCondition = selectLogic.condition;
+                if (selectCondition.left.isConstExpression() && selectCondition.right.isConstExpression()) {
+                    if (!Global.failedConstCondition(selectCondition))
+                        if (iterator.hasNext())
+                            queue.add(iterator.next());
+                    return;
+                } else if (selectCondition.left.isSimpleColumn() && selectCondition.right.isConstExpression()) {
+                    getRowsFromColumnComparision(table, selectCondition);
+                    return;
+                } else if (selectCondition.right.isSimpleColumn() && selectCondition.left.isConstExpression()) {
+                    getRowsFromColumnComparision(table, swapCondition(selectCondition));
+                    return;
                 }
+            }
+            while (iterator.hasNext()) {
+                Row row = iterator.next();
+                if (table.failedLogic(selectLogic, row))
+                    continue;
+                queue.add(row);
+                break;
             }
         }
     }

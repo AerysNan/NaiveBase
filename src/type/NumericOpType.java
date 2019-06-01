@@ -1,5 +1,5 @@
 package type;
 
-public enum OperatorType {
+public enum NumericOpType {
     ADD, SUB, MUL, DIV
 }

@@ -1,12 +1,12 @@
 package query;
 
 import type.ComparerType;
-import type.OperatorType;
+import type.NumericOpType;
 
 public class Expression {
     public Expression left;
     public Expression right;
-    public OperatorType operatorType;
+    public NumericOpType numericOpType;
     public Comparer comparer;
     public boolean terminal;
 
@@ -15,27 +15,27 @@ public class Expression {
         this.comparer = comparer;
     }
 
-    public Expression(Expression left, Expression right, OperatorType operatorType) {
+    public Expression(Expression left, Expression right, NumericOpType numericOpType) {
         this.terminal = false;
         this.left = left;
         this.right = right;
-        this.operatorType = operatorType;
+        this.numericOpType = numericOpType;
     }
 
-    public boolean isConstExpression() {
+    boolean isConstExpression() {
         if (terminal)
             return comparer.type != ComparerType.COLUMN;
         return left.isConstExpression() && right.isConstExpression();
     }
 
-    public boolean isSimpleColumn() {
+    boolean isSimpleColumn() {
         return terminal && comparer.type == ComparerType.COLUMN;
     }
 
-    public Expression(Expression e) {
+    Expression(Expression e) {
         this.left = e.left;
         this.right = e.right;
-        this.operatorType = e.operatorType;
+        this.numericOpType = e.numericOpType;
         this.comparer = e.comparer;
         this.terminal = e.terminal;
     }

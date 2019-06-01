@@ -1,11 +1,7 @@
 package schema;
 
 import exception.*;
-import query.QueryResult;
-import query.QueryTable;
-import query.JointTable;
-import query.SimpleTable;
-import query.Condition;
+import query.*;
 import type.ColumnType;
 
 import java.io.*;
@@ -101,13 +97,13 @@ public class Database {
         tables.get(name).deleteAllPage();
     }
 
-    public String select(String[] columnsProjected, QueryTable[] tablesQueried, Condition whereCondition) {
+    public String select(String[] columnsProjected, QueryTable[] tablesQueried, Logic selectLogic) {
         assert tablesQueried.length > 0;
         StringBuilder result = new StringBuilder();
         if (tablesQueried.length == 1) {
             if (tablesQueried[0] instanceof SimpleTable) {
                 QueryResult queryResult = new QueryResult(tables.get((((SimpleTable) tablesQueried[0]).table.tableName)).columns, columnsProjected);
-                (tablesQueried[0]).setWhereCondition(whereCondition);
+                tablesQueried[0].setSelectLogic(selectLogic);
                 while ((tablesQueried[0]).hasNext()) {
                     Row row = tablesQueried[0].next();
                     if (row == null) {
@@ -122,13 +118,12 @@ public class Database {
                 columns.addAll(tables.get(((JointTable) tablesQueried[0]).table1.tableName).columns);
                 columns.addAll(tables.get(((JointTable) tablesQueried[0]).table2.tableName).columns);
                 QueryResult queryResult = new QueryResult(columns, columnsProjected);
-                tablesQueried[0].setWhereCondition(whereCondition);
+                tablesQueried[0].setSelectLogic(selectLogic);
                 while (tablesQueried[0].hasNext()) {
                     Row row = tablesQueried[0].next();
                     if (row == null) {
-                        if (result.length() == 0) {
+                        if (result.length() == 0)
                             result.append("--EMPTY--");
-                        }
                         break;
                     }
                     result.append(queryResult.generateQueryRecord(row)).append("\n");
@@ -179,21 +174,21 @@ public class Database {
                 throw new InternalException("table metadata file corrupted.");
             ColumnType type = ColumnType.INT;
             switch (columnAttr[1]) {
-            case "INT":
-                type = ColumnType.INT;
-                break;
-            case "LONG":
-                type = ColumnType.LONG;
-                break;
-            case "FLOAT":
-                type = ColumnType.FLOAT;
-                break;
-            case "DOUBLE":
-                type = ColumnType.DOUBLE;
-                break;
-            case "STRING":
-                type = ColumnType.STRING;
-                break;
+                case "INT":
+                    type = ColumnType.INT;
+                    break;
+                case "LONG":
+                    type = ColumnType.LONG;
+                    break;
+                case "FLOAT":
+                    type = ColumnType.FLOAT;
+                    break;
+                case "DOUBLE":
+                    type = ColumnType.DOUBLE;
+                    break;
+                case "STRING":
+                    type = ColumnType.STRING;
+                    break;
             }
             Column newColumn = new Column(columnAttr[0], type, Integer.parseInt(columnAttr[2]),
                     Boolean.parseBoolean(columnAttr[3]), Integer.parseInt(columnAttr[4]));

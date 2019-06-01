@@ -8,6 +8,7 @@ import schema.Table;
 import type.ColumnType;
 import type.ComparatorType;
 import type.ComparerType;
+import type.LogicalOpType;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -25,15 +26,15 @@ public class JointTable extends QueryTable implements Iterator<Row> {
 
     public Table table1;
     public Table table2;
-    private Condition onCondition;
+    private Logic joinLogic;
     private Iterator<Row> iterator1;
     private Iterator<Row> iterator2;
 
 
-    public JointTable(Table table1, Table table2, Condition onCondition) {
+    public JointTable(Table table1, Table table2, Logic joinLogic) {
         this.table1 = table1;
         this.table2 = table2;
-        this.onCondition = onCondition;
+        this.joinLogic = joinLogic;
         this.iterator1 = table1.iterator();
         this.iterator2 = table2.iterator();
         this.buffer = new LinkedList<>();
@@ -46,27 +47,30 @@ public class JointTable extends QueryTable implements Iterator<Row> {
 
     @Override
     public void figure() {
-        if (onCondition.type.equals(ComparatorType.EQ) && ((onCondition.left.isSimpleColumn() && onCondition.right.isConstExpression() ||
-                (onCondition.right.isSimpleColumn() && onCondition.left.isConstExpression())))) {
-            if (onCondition.left.isSimpleColumn())
-                EQCompareFigure(onCondition);
-            else
-                EQCompareFigure(swapCondition(onCondition));
-        } else {
-            while (iterator1.hasNext()) {
-                Row leftRow = iterator1.next();
-                while (iterator2.hasNext()) {
-                    Row rightRow = iterator2.next();
-                    QueryRow row = new QueryRow(leftRow, rightRow);
-                    if (failedCondition(onCondition, row) || failedCondition(whereCondition, row))
-                        continue;
-                    queue.add(row);
-                }
-                iterator2 = table2.iterator();
-                if (queue.size() == 0)
-                    continue;
-                break;
+        if (joinLogic.terminal) {
+            Condition joinCondition = joinLogic.condition;
+            if (joinCondition.type.equals(ComparatorType.EQ) && ((joinCondition.left.isSimpleColumn() && joinCondition.right.isConstExpression() ||
+                    (joinCondition.right.isSimpleColumn() && joinCondition.left.isConstExpression())))) {
+                if (joinCondition.left.isSimpleColumn())
+                    EQCompareFigure(joinCondition);
+                else
+                    EQCompareFigure(swapCondition(joinCondition));
+                return;
             }
+        }
+        while (iterator1.hasNext()) {
+            Row leftRow = iterator1.next();
+            while (iterator2.hasNext()) {
+                Row rightRow = iterator2.next();
+                QueryRow row = new QueryRow(leftRow, rightRow);
+                if (failedLogic(joinLogic, row) || failedLogic(selectLogic, row))
+                    continue;
+                queue.add(row);
+            }
+            iterator2 = table2.iterator();
+            if (queue.size() == 0)
+                continue;
+            break;
         }
     }
 
@@ -91,7 +95,7 @@ public class JointTable extends QueryTable implements Iterator<Row> {
                 }
                 while (iterator1.hasNext()) {
                     Row newRow = new QueryRow(iterator1.next(), row);
-                    if (failedCondition(whereCondition, newRow))
+                    if (failedLogic(selectLogic, newRow))
                         continue;
                     queue.add(newRow);
                     break;
@@ -105,7 +109,7 @@ public class JointTable extends QueryTable implements Iterator<Row> {
                 }
                 while (iterator2.hasNext()) {
                     Row newRow = new QueryRow(row, iterator2.next());
-                    if (failedCondition(whereCondition, newRow))
+                    if (failedLogic(selectLogic, newRow))
                         continue;
                     queue.add(newRow);
                     break;
@@ -119,7 +123,7 @@ public class JointTable extends QueryTable implements Iterator<Row> {
                 if (iterator1.hasNext()) {
                     for (Row row : rows) {
                         Row newRow = new QueryRow(iterator1.next(), row);
-                        if (failedCondition(whereCondition, newRow))
+                        if (failedLogic(selectLogic, newRow))
                             continue;
                         queue.add(newRow);
                     }
@@ -131,7 +135,7 @@ public class JointTable extends QueryTable implements Iterator<Row> {
                 if (iterator2.hasNext()) {
                     for (Row row : rows) {
                         Row newRow = new QueryRow(row, iterator2.next());
-                        if (failedCondition(whereCondition, newRow))
+                        if (failedLogic(selectLogic, newRow))
                             continue;
                         queue.add(newRow);
                     }
@@ -169,6 +173,16 @@ public class JointTable extends QueryTable implements Iterator<Row> {
             }
         }
         return index;
+    }
+
+    private boolean failedLogic(Logic logic, Row row) {
+        if (logic == null)
+            return false;
+        if (logic.terminal)
+            return failedCondition(logic.condition, row);
+        if (logic.logicalOpType == LogicalOpType.AND)
+            return failedLogic(logic.left, row) || failedLogic(logic.right, row);
+        return failedLogic(logic.left, row) && failedLogic(logic.right, row);
     }
 
     private boolean failedCondition(Condition condition, Row row) {
@@ -219,7 +233,7 @@ public class JointTable extends QueryTable implements Iterator<Row> {
             Comparable v2 = evalExpressionValue(condition.right, row);
             if (v1 == null || v2 == null)
                 throw new InvalidComparisionException();
-            if(t1 == ComparerType.STRING) {
+            if (t1 == ComparerType.STRING) {
                 if (condition.type == ComparatorType.GT)
                     return v1.compareTo(v2) <= 0;
                 if (condition.type == ComparatorType.GE)
@@ -269,7 +283,7 @@ public class JointTable extends QueryTable implements Iterator<Row> {
                 throw new InvalidExpressionException();
             double d1 = ((Number) v1).doubleValue();
             double d2 = ((Number) v2).doubleValue();
-            switch (expression.operatorType) {
+            switch (expression.numericOpType) {
                 case ADD:
                     return d1 + d2;
                 case DIV:

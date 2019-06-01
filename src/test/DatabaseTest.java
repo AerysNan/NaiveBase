@@ -24,6 +24,10 @@ public class DatabaseTest {
         return new Expression(new Comparer(ComparerType.NUMBER, value));
     }
 
+    private Logic buildSimpleLogic(Condition condition) {
+        return new Logic(condition);
+    }
+
     @Before
     public void setUp() {
         database = new Database("admin");
@@ -53,7 +57,7 @@ public class DatabaseTest {
         Expression left = buildSingleNumberExpression("1");
         Expression right = buildSingleNumberExpression("2");
         Condition condition = new Condition(left, right, ComparatorType.EQ);
-        String result = database.select(null, tablesQueried, condition);
+        String result = database.select(null, tablesQueried, buildSimpleLogic(condition));
         assertEquals("--EMPTY--", result);
     }
 
@@ -64,7 +68,7 @@ public class DatabaseTest {
         Expression left = buildSimpleColumnExpression("id");
         Expression right = buildSingleNumberExpression("1000");
         Condition condition = new Condition(left, right, ComparatorType.GT);
-        String result = database.select(null, tablesQueried, condition);
+        String result = database.select(null, tablesQueried, buildSimpleLogic(condition));
         assertEquals("--EMPTY--", result);
     }
 
@@ -75,7 +79,7 @@ public class DatabaseTest {
         Expression left = buildSingleNumberExpression("1");
         Expression right = buildSingleNumberExpression("2");
         Condition condition = new Condition(left, right, ComparatorType.LE);
-        String result = database.select(null, tablesQueried, condition);
+        String result = database.select(null, tablesQueried, buildSimpleLogic(condition));
         assertEquals(testNum, result.split("\n").length);
     }
 
@@ -86,7 +90,7 @@ public class DatabaseTest {
         Expression left = buildSingleNumberExpression("-1000");
         Expression right = buildSimpleColumnExpression("score");
         Condition condition = new Condition(left, right, ComparatorType.LT);
-        String result = database.select(null, tablesQueried, condition);
+        String result = database.select(null, tablesQueried, buildSimpleLogic(condition));
         assertEquals(testNum, result.split("\n").length);
     }
 
@@ -97,7 +101,7 @@ public class DatabaseTest {
         Expression left = buildSimpleColumnExpression("id");
         Expression right = buildSimpleColumnExpression("score");
         Condition condition = new Condition(left, right, ComparatorType.EQ);
-        String result = database.select(null, tablesQueried, condition);
+        String result = database.select(null, tablesQueried, buildSimpleLogic(condition));
         assertEquals(1, result.split("\n").length);
     }
 
@@ -108,7 +112,7 @@ public class DatabaseTest {
         Expression left = buildSimpleColumnExpression("id");
         Expression right = buildSimpleColumnExpression("score");
         Condition condition = new Condition(left, right, ComparatorType.NE);
-        String result = database.select(null, tablesQueried, condition);
+        String result = database.select(null, tablesQueried, buildSimpleLogic(condition));
         assertEquals(testNum - 1, result.split("\n").length);
     }
 
@@ -119,7 +123,7 @@ public class DatabaseTest {
         Expression left = buildSimpleColumnExpression("id");
         Expression right = buildSingleNumberExpression("1000");
         Condition condition = new Condition(left, right, ComparatorType.LE);
-        String result = database.select(null, tablesQueried, condition);
+        String result = database.select(null, tablesQueried, buildSimpleLogic(condition));
         assertEquals(testNum, result.split("\n").length);
     }
 
@@ -130,7 +134,7 @@ public class DatabaseTest {
         Expression left = buildSimpleColumnExpression("id");
         Expression right = buildSingleNumberExpression("1000");
         Condition condition = new Condition(left, right, ComparatorType.GT);
-        String result = database.select(null, tablesQueried, condition);
+        String result = database.select(null, tablesQueried, buildSimpleLogic(condition));
         assertEquals("--EMPTY--", result);
     }
 
@@ -141,7 +145,7 @@ public class DatabaseTest {
         Expression left = buildSingleNumberExpression("1000");
         Expression right = buildSimpleColumnExpression("score");
         Condition condition = new Condition(left, right, ComparatorType.GT);
-        String result = database.select(null, tablesQueried, condition);
+        String result = database.select(null, tablesQueried, buildSimpleLogic(condition));
         assertEquals(testNum, result.split("\n").length);
     }
 
@@ -152,7 +156,7 @@ public class DatabaseTest {
         Expression left = buildSingleNumberExpression("1000");
         Expression right = buildSimpleColumnExpression("score");
         Condition condition = new Condition(left, right, ComparatorType.LT);
-        String result = database.select(null, tablesQueried, condition);
+        String result = database.select(null, tablesQueried, buildSimpleLogic(condition));
         assertEquals("--EMPTY--", result);
     }
 
@@ -162,7 +166,7 @@ public class DatabaseTest {
         Expression right = buildSingleNumberExpression("2");
         Condition onCondition = new Condition(left, right, ComparatorType.EQ);
         JointTable[] tablesQueried = new JointTable[1];
-        tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), onCondition);
+        tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), buildSimpleLogic(onCondition));
         String result = database.select(null, tablesQueried, null);
         assertEquals("--EMPTY--", result);
     }
@@ -173,7 +177,7 @@ public class DatabaseTest {
         Expression right = buildSingleNumberExpression("2");
         Condition onCondition = new Condition(left, right, ComparatorType.LT);
         JointTable[] tablesQueried = new JointTable[1];
-        tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), onCondition);
+        tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), buildSimpleLogic(onCondition));
         String result = database.select(null, tablesQueried, null);
         assertEquals(testNum * testNum, result.split("\n").length);
     }
@@ -184,7 +188,7 @@ public class DatabaseTest {
         Expression right = buildSingleNumberExpression("1001");
         Condition onCondition = new Condition(left, right, ComparatorType.EQ);
         JointTable[] tablesQueried = new JointTable[1];
-        tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), onCondition);
+        tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), buildSimpleLogic(onCondition));
         String result = database.select(null, tablesQueried, null);
         assertEquals("--EMPTY--", result);
     }
@@ -195,7 +199,7 @@ public class DatabaseTest {
         Expression right = buildSingleNumberExpression("11");
         Condition onCondition = new Condition(left, right, ComparatorType.EQ);
         JointTable[] tablesQueried = new JointTable[1];
-        tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), onCondition);
+        tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), buildSimpleLogic(onCondition));
         String result = database.select(null, tablesQueried, null);
         assertEquals(testNum, result.split("\n").length);
     }
@@ -206,7 +210,7 @@ public class DatabaseTest {
         Expression right = buildSingleNumberExpression("10001");
         Condition onCondition = new Condition(left, right, ComparatorType.LT);
         JointTable[] tablesQueried = new JointTable[1];
-        tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), onCondition);
+        tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), buildSimpleLogic(onCondition));
         String result = database.select(null, tablesQueried, null);
         assertEquals(testNum * testNum, result.split("\n").length);
     }
@@ -217,7 +221,7 @@ public class DatabaseTest {
         Expression right = buildSimpleColumnExpression("grades.id");
         Condition onCondition = new Condition(left, right, ComparatorType.EQ);
         JointTable[] tablesQueried = new JointTable[1];
-        tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), onCondition);
+        tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), buildSimpleLogic(onCondition));
         String result = database.select(null, tablesQueried, null);
         assertEquals(testNum, result.split("\n").length);
     }
@@ -228,7 +232,7 @@ public class DatabaseTest {
         Expression right = buildSimpleColumnExpression("grades.id");
         Condition onCondition = new Condition(left, right, ComparatorType.NE);
         JointTable[] tablesQueried = new JointTable[1];
-        tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), onCondition);
+        tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), buildSimpleLogic(onCondition));
         String result = database.select(null, tablesQueried, null);
         assertEquals(testNum * (testNum - 1), result.split("\n").length);
     }
@@ -239,7 +243,7 @@ public class DatabaseTest {
         Expression right = buildSingleNumberExpression("1000");
         Condition onCondition = new Condition(left, right, ComparatorType.LT);
         JointTable[] tablesQueried = new JointTable[1];
-        tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), onCondition);
+        tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), buildSimpleLogic(onCondition));
         String result = database.select(null, tablesQueried, null);
         assertEquals(testNum * testNum, result.split("\n").length);
     }
@@ -250,7 +254,7 @@ public class DatabaseTest {
         Expression right = buildSingleNumberExpression("1");
         Condition onCondition = new Condition(left, right, ComparatorType.EQ);
         JointTable[] tablesQueried = new JointTable[1];
-        tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), onCondition);
+        tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), buildSimpleLogic(onCondition));
         String result = database.select(null, tablesQueried, null);
         assertEquals(testNum, result.split("\n").length);
     }
@@ -261,7 +265,7 @@ public class DatabaseTest {
         Expression right = buildSingleNumberExpression("1000");
         Condition onCondition = new Condition(left, right, ComparatorType.EQ);
         JointTable[] tablesQueried = new JointTable[1];
-        tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), onCondition);
+        tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), buildSimpleLogic(onCondition));
         String result = database.select(null, tablesQueried, null);
         assertEquals("--EMPTY--", result);
     }
@@ -275,8 +279,8 @@ public class DatabaseTest {
         Expression r2 = buildSingleNumberExpression("1");
         Condition whereCondition = new Condition(l2, r2, ComparatorType.EQ);
         JointTable[] tablesQueried = new JointTable[1];
-        tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), onCondition);
-        String result = database.select(null, tablesQueried, whereCondition);
+        tablesQueried[0] = new JointTable(database.getTable("grade"), database.getTable("grades"), buildSimpleLogic(onCondition));
+        String result = database.select(null, tablesQueried, buildSimpleLogic(whereCondition));
         assertEquals(testNum - 1, result.split("\n").length);
     }
 }

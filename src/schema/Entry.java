@@ -5,7 +5,7 @@ import java.io.Serializable;
 public class Entry implements Comparable<Entry>,Serializable {
 
     private static final long serialVersionUID = -5809782578272943999L;
-    public int id;
+    private int id;
     public Comparable value;
 
     public Entry(int id, Comparable value) {
