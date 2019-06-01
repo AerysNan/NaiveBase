@@ -461,7 +461,7 @@ public class Table implements Iterable<Row> {
                     Comparable v1 = evalExpressionValue(condition.left, row);
                     Comparable v2 = evalExpressionValue(condition.right, row);
                     if (t1 == ComparerType.STRING)
-                        return v1 != v2;
+                        return v1.compareTo(v2) != 0;
                     if (v1 == null || v2 == null)
                         throw new InvalidComparisionException();
                     double d1 = ((Number) v1).doubleValue();
@@ -479,7 +479,7 @@ public class Table implements Iterable<Row> {
                     Comparable v1 = evalExpressionValue(condition.left, row);
                     Comparable v2 = evalExpressionValue(condition.right, row);
                     if (t1 == ComparerType.STRING)
-                        return v1 == v2;
+                        return v1.compareTo(v2) == 0;
                     if (v1 == null || v2 == null)
                         throw new InvalidComparisionException();
                     double d1 = ((Number) v1).doubleValue();

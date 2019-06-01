@@ -14,7 +14,7 @@ public abstract class QueryTable implements Iterator<Row> {
     LinkedList<Row> buffer;
     Logic selectLogic;
     boolean isFirst;
-    ArrayList<Column> columns;
+    public ArrayList<Column> columns;
 
     public abstract void figure();
 

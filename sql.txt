@@ -1,19 +1,50 @@
 drop database if exists test;
 create database test;
 use test;
+create table student (
+  student_id int,
+  student_name string(10),
+  department_name string(50),
+  primary key (student_id)
+);
 create table grade (
-  id int,
-  name string(10),
+  student_id int,
+  course_id int,
   score double,
-  primary key (id)
+  primary key (course_id, student_id)
 );
-create table grades (
-  id int,
-  nickName string(5),
-  primary key (id)
+create table course (
+  course_id int,
+  course_name string(50),
+  department_name string(50),
+  primary key (course_id)
 );
-show databases;
-insert into grade values (0, 'aaa', 99.0), (1, 'bbb', 98.0), (2, 'ccc', 97.0), (3, 'ddd', 96.0), (4, 'eee', 95.0);
-insert into grade values (5, 'fff', 94.0), (6, 'ggg', 93.0), (7, 'hhh', 92.0), (8, 'iii', 91.0), (9, 'jjj', 90.0);
-insert into grades values (0, 'aa'), (1, 'bb'), (2, 'cc'), (3, 'dd'), (4, 'ee');
-insert into grades values (5, 'ff'), (6, 'gg'), (7, 'hh'), (8, 'ii'), (9, 'jj');
+insert into student values (01, 'A', 'Computer Science');
+insert into student values (02, 'B', 'Statistics');
+insert into student values (03, 'C', 'Computer Science');
+insert into student values (04, 'D', 'Mathematics');
+insert into student values (05, 'E', 'Statistics');
+insert into student values (06, 'F', 'Mathematics');
+insert into student values (07, 'G', 'Statistics');
+insert into student values (08, 'H', 'Statistics');
+insert into student values (09, 'I', 'Computer Science');
+insert into student values (10, 'J', 'Mathematics');
+insert into student values (11, 'K', 'Computer Science');
+insert into student values (12, 'l', 'Mathematics');
+
+insert into course values (01, 'Linear Algebra', 'Mathematics');
+insert into course values (02, 'Database', 'Computer Science');
+insert into course values (03, 'Financial Econometrics', 'Statistics');
+
+insert into grade values (01, 01, 84.1), (01, 02, 72.6), (01, 03, 74.4);
+insert into grade values (02, 01, 77.9), (02, 02, 69.6), (02, 03, 78.7);
+insert into grade values (03, 01, 79.0), (03, 02, 77.9), (03, 03, 81.1);
+insert into grade values (04, 01, 67.7), (04, 02, 79.9), (04, 03, 79.0);
+insert into grade values (05, 01, 78.8), (05, 02, 81.5), (05, 03, 70.7);
+insert into grade values (06, 01, 77.0), (06, 02, 85.2), (06, 03, 76.1);
+insert into grade values (07, 01, 79.9), (07, 02, 77.0), (07, 03, 82.9);
+insert into grade values (08, 01, 85.0), (08, 02, 82.8), (08, 03, 80.7);
+insert into grade values (09, 01, 74.4), (09, 02, 84.6), (09, 03, 89.0);
+insert into grade values (10, 01, 79.2), (10, 02, 87.6), (10, 03, 81.9);
+insert into grade values (11, 01, 73.1), (11, 02, 75.2), (11, 03, 82.5);
+insert into grade values (12, 01, 81.4), (12, 02, 76.9), (12, 03, 78.6);

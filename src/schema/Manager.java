@@ -4,6 +4,7 @@ import exception.*;
 import query.*;
 
 import java.io.*;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 import static global.Global.*;
@@ -189,12 +190,14 @@ public class Manager {
         return new SimpleTable(database.tables.get(tableName));
     }
 
-    public JointTable getMultipleJointTable(String tableName1, String tableName2, Logic logic) {
+    public JointTable getMultipleJointTable(ArrayList<String> tableNames, Logic logic) {
         Database database = databases.get(current);
-        if (!database.tables.containsKey(tableName1))
-            throw new TableNotExistsException(tableName1);
-        if (!database.tables.containsKey(tableName2))
-            throw new TableNotExistsException(tableName2);
-        return new JointTable(database.tables.get(tableName1), database.tables.get(tableName2), logic);
+        ArrayList<Table> tables = new ArrayList<>();
+        for (String tableName : tableNames) {
+            if (!database.tables.containsKey(tableName))
+                throw new TableNotExistsException(tableName);
+            tables.add(database.tables.get(tableName));
+        }
+        return new JointTable(tables, logic);
     }
 }
