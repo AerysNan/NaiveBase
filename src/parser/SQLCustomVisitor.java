@@ -219,17 +219,9 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
 
     @Override
     public String visitSelect_stmt(SQLParser.Select_stmtContext ctx) {
-        // TODO: order by
-        try {
-            return visitSelect_core(ctx.select_core());
-        } catch (Exception e) {
-            return e.getMessage();
-        }
-    }
-
-    @Override
-    public String visitSelect_core(SQLParser.Select_coreContext ctx) {
-        // TODO: distinct / all
+        boolean distinct = false;
+        if (ctx.K_DISTINCT() != null)
+            distinct = true;
         int columnCount = ctx.result_column().size();
         String[] columnsProjected = new String[columnCount];
         for (int i = 0; i < columnCount; i++) {
@@ -248,7 +240,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
         if (ctx.K_WHERE() != null)
             logic = visitMultiple_condition(ctx.multiple_condition());
         try {
-            return manager.select(columnsProjected, queryTables, logic);
+            return manager.select(columnsProjected, queryTables, logic, distinct);
         } catch (Exception e) {
             return e.getMessage();
         }
