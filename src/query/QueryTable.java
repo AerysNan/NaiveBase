@@ -18,6 +18,10 @@ public abstract class QueryTable implements Iterator<Row> {
 
     public abstract void figure();
 
+    public abstract void reset();
+
+    public abstract  ArrayList<MetaInfo> generateMeta();
+
     public void setSelectLogic(Logic selectLogic) {
         this.selectLogic = selectLogic;
     }

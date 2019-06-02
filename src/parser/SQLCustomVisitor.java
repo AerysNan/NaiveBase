@@ -241,14 +241,14 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
             columnsProjected[i] = columnName;
         }
         int queryCount = ctx.table_query().size();
-        QueryTable[] tablesQueried = new QueryTable[queryCount];
-        for (int i = 0; i < columnCount; i++)
-            tablesQueried[i] = visitTable_query(ctx.table_query(i));
+        QueryTable[] queryTables = new QueryTable[queryCount];
+        for (int i = 0; i < queryCount; i++)
+            queryTables[i] = visitTable_query(ctx.table_query(i));
         Logic logic = null;
         if (ctx.K_WHERE() != null)
             logic = visitMultiple_condition(ctx.multiple_condition());
         try {
-            return manager.select(columnsProjected, tablesQueried, logic);
+            return manager.select(columnsProjected, queryTables, logic);
         } catch (Exception e) {
             return e.getMessage();
         }

@@ -1,6 +1,7 @@
 package schema;
 
 import java.io.Serializable;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.StringJoiner;
@@ -13,6 +14,7 @@ public class Row implements Serializable {
 
     public Row(int pageID) {
         this.pageID = pageID;
+        this.entries = new ArrayList<>();
     }
 
     public Row(Entry[] entries, int pageID) {
@@ -26,6 +28,10 @@ public class Row implements Serializable {
 
     public ArrayList<Entry> getEntries() {
         return entries;
+    }
+
+    public void appendEntries(ArrayList<Entry> entries) {
+        this.entries.addAll(entries);
     }
 
     public String toString() {

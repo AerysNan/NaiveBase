@@ -4,22 +4,19 @@ import exception.AmbiguousColumnNameException;
 import exception.ColumnNameFormatException;
 import exception.ColumnNotFoundException;
 import exception.TableNotExistsException;
-import schema.Column;
 import schema.Entry;
 import schema.Row;
-import schema.Table;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.StringJoiner;
 
 public class QueryResult implements Iterator<QueryResult.QueryRecord> {
     class QueryRecord {
-        int id;
         ArrayList<Entry> entries;
 
-        QueryRecord(int id) {
-            this.id = id;
+        QueryRecord() {
             this.entries = new ArrayList<>();
         }
 
@@ -33,61 +30,29 @@ public class QueryResult implements Iterator<QueryResult.QueryRecord> {
             StringJoiner sj = new StringJoiner(", ");
             for (Entry entry : entries)
                 sj.add(entry.toString());
-            return id + " | " + sj.toString();
+            return sj.toString();
         }
     }
 
-    private class TableMetaInfo {
-        String name;
-        ArrayList<Column> columns;
-
-        TableMetaInfo(String name, ArrayList<Column> columns) {
-            this.name = name;
-            this.columns = columns;
-        }
-
-        int columnFind(String name) {
-            int found = -1;
-            for (int i = 0; i < columns.size(); i++) {
-                if (name.toLowerCase().equals(columns.get(i).getName())) {
-                    found = i;
-                }
-            }
-            if (found == -1)
-                throw new ColumnNotFoundException(name);
-            return found;
-        }
-    }
-
-    private ArrayList<TableMetaInfo> metaInfos;
+    private ArrayList<MetaInfo> metaInfoInfos;
     private ArrayList<Integer> index;
-    private int queryResultNum;
 
-    public QueryResult(Table table, String[] selectProjects) {
-        this.metaInfos = new ArrayList<>() {{
-            add(new TableMetaInfo(table.tableName, table.columns));
-        }};
-        init(selectProjects);
-    }
-
-    public QueryResult(ArrayList<Table> tables, String[] selectProjects) {
-        this.metaInfos = new ArrayList<>() {{
-            for (Table table : tables)
-                add(new TableMetaInfo(table.tableName, table.columns));
+    public QueryResult(QueryTable[] queryTables, String[] selectProjects) {
+        this.metaInfoInfos = new ArrayList<>() {{
+            for (QueryTable queryTable : queryTables)
+                addAll(queryTable.generateMeta());
         }};
         init(selectProjects);
     }
 
     private void init(String[] selectProjects) {
-        this.queryResultNum = 0;
         this.index = new ArrayList<>();
         if (selectProjects != null) {
-            for (String selectProject : selectProjects) {
+            for (String selectProject : selectProjects)
                 this.index.add(getColumnIndex(selectProject));
-            }
         } else {
             int offset = 0;
-            for (TableMetaInfo metaInfo : metaInfos) {
+            for (MetaInfo metaInfo : metaInfoInfos) {
                 for (int i = 0; i < metaInfo.columns.size(); i++) {
                     if (!"uid".equals(metaInfo.columns.get(i).getName())) {
                         index.add(i + offset);
@@ -98,8 +63,15 @@ public class QueryResult implements Iterator<QueryResult.QueryRecord> {
         }
     }
 
+    public static Row combineRow(LinkedList<Row> rows) {
+        Row result = new Row(-1);
+        for (int i = rows.size() - 1; i >= 0; i--)
+            result.appendEntries(rows.get(i).getEntries());
+        return result;
+    }
+
     public String generateQueryRecord(Row row) {
-        QueryRecord record = new QueryRecord(++queryResultNum);
+        QueryRecord record = new QueryRecord();
         for (Integer integer : index) record.add(row.getEntries().get(integer));
         return record.toString();
     }
@@ -108,7 +80,7 @@ public class QueryResult implements Iterator<QueryResult.QueryRecord> {
     private int getColumnIndex(String columnName) {
         int index = 0, found = 0, offset = 0;
         if (!columnName.contains(".")) {
-            for (TableMetaInfo metaInfo : metaInfos) {
+            for (MetaInfo metaInfo : metaInfoInfos) {
                 for (int j = 0; j < metaInfo.columns.size(); j++) {
                     if (columnName.equals(metaInfo.columns.get(j).getName())) {
                         found++;
@@ -123,8 +95,8 @@ public class QueryResult implements Iterator<QueryResult.QueryRecord> {
                 throw new AmbiguousColumnNameException(columnName);
         } else {
             String[] tableInfo = splitColumnFullName(columnName);
-            for (TableMetaInfo metaInfo : metaInfos) {
-                if (metaInfo.name.equals(tableInfo[0])) {
+            for (MetaInfo metaInfo : metaInfoInfos) {
+                if (metaInfo.tableName.equals(tableInfo[0])) {
                     found++;
                     index = metaInfo.columnFind(tableInfo[1]) + offset;
                 }
