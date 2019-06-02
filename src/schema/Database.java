@@ -6,10 +6,7 @@ import type.ColumnType;
 
 import java.io.*;
 import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.ArrayList;
-import java.util.StringJoiner;
+import java.util.*;
 
 import static global.Global.*;
 
@@ -98,39 +95,47 @@ public class Database {
         tables.get(name).deleteAllPage();
     }
 
-    public String select(String[] columnsProjected, QueryTable[] tablesQueried, Logic selectLogic) {
+    private String buildCartesianProduct(QueryTable[] queryTables, QueryResult queryResult) {
+        int id = 0;
         StringJoiner result = new StringJoiner("\n");
-        if (tablesQueried.length == 1) {
-            if (tablesQueried[0] instanceof SimpleTable) {
-                QueryResult queryResult = new QueryResult(((SimpleTable) tablesQueried[0]).getTable(), columnsProjected);
-                tablesQueried[0].setSelectLogic(selectLogic);
-                while ((tablesQueried[0]).hasNext()) {
-                    Row row = tablesQueried[0].next();
-                    if (row == null) {
-                        if (result.length() == 0)
-                            result.add("No Rows.");
-                        break;
-                    }
-                    result.add(queryResult.generateQueryRecord(row));
+        LinkedList<Row> currentRows = new LinkedList<>();
+        while (true) {
+            StringJoiner buffer = new StringJoiner(", ");
+            if (currentRows.isEmpty()) {
+                for (QueryTable queryTable : queryTables) {
+                    if (!queryTable.hasNext())
+                        return "No rows.";
+                    currentRows.push(queryTable.next());
                 }
+                buffer.add(queryResult.generateQueryRecord(QueryResult.combineRow(currentRows)));
+                result.add(++id + " | " + buffer.toString());
             } else {
-                QueryResult queryResult = new QueryResult(((JointTable) tablesQueried[0]).getTables(), columnsProjected);
-                tablesQueried[0].setSelectLogic(selectLogic);
-                while (tablesQueried[0].hasNext()) {
-                    Row row = tablesQueried[0].next();
-                    if (row == null) {
-                        if (result.length() == 0)
-                            result.add("No Rows.");
-                        break;
-                    }
-                    result.add(queryResult.generateQueryRecord(row));
+                int index;
+                for (index = queryTables.length - 1; index >= 0; index--) {
+                    currentRows.pop();
+                    if (!queryTables[index].hasNext())
+                        queryTables[index].reset();
+                    else break;
                 }
+                if (index < 0)
+                    break;
+                for (int i = index; i < queryTables.length; i++) {
+                    if (!queryTables[i].hasNext())
+                        break;
+                    currentRows.push(queryTables[i].next());
+                }
+                buffer.add(queryResult.generateQueryRecord(QueryResult.combineRow(currentRows)));
+                result.add(++id + " | " + buffer.toString());
             }
-            return result.toString();
-        } else {
-            // TODO: more table join
-            return "";
         }
+        return result.toString();
+    }
+
+    public String select(String[] columnsProjected, QueryTable[] queryTables, Logic selectLogic) {
+        QueryResult queryResult = new QueryResult(queryTables, columnsProjected);
+        for (QueryTable queryTable : queryTables)
+            queryTable.setSelectLogic(selectLogic);
+        return buildCartesianProduct(queryTables, queryResult);
     }
 
     private void recoverDatabase() {

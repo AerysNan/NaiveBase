@@ -21,6 +21,20 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
         this.columns = table.columns;
     }
 
+    public void reset() {
+        this.queue.clear();
+        this.buffer.clear();
+        this.isFirst = true;
+        this.iterator = table.iterator();
+    }
+
+    @Override
+    public ArrayList<MetaInfo> generateMeta() {
+        return new ArrayList<>() {{
+            add(new MetaInfo(table.tableName, table.columns));
+        }};
+    }
+
     @Override
     public void figure() {
         if (selectLogic == null) {

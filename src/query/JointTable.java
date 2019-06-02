@@ -50,6 +50,19 @@ public class JointTable extends QueryTable implements Iterator<Row> {
         }
     }
 
+    public void reset() {
+        for (int i = 0; i < iterators.size(); i++)
+            iterators.set(i, tables.get(i).iterator());
+    }
+
+    @Override
+    public ArrayList<MetaInfo> generateMeta() {
+        return new ArrayList<>() {{
+            for (Table table : tables)
+                add(new MetaInfo(table.tableName, table.columns));
+        }};
+    }
+
     @Override
     public void figure() {
         if (joinLogic.terminal && tables.size() == 2) {
