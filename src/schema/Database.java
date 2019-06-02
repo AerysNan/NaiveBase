@@ -95,8 +95,9 @@ public class Database {
         tables.get(name).deleteAllPage();
     }
 
-    private String buildCartesianProduct(QueryTable[] queryTables, QueryResult queryResult) {
+    private String buildCartesianProduct(QueryTable[] queryTables, QueryResult queryResult, boolean distinct) {
         int id = 0;
+        HashSet<String> hashSet = new HashSet<>();
         StringJoiner result = new StringJoiner("\n");
         LinkedList<Row> currentRows = new LinkedList<>();
         while (true) {
@@ -108,7 +109,10 @@ public class Database {
                     currentRows.push(queryTable.next());
                 }
                 buffer.add(queryResult.generateQueryRecord(QueryResult.combineRow(currentRows)));
-                result.add(++id + " | " + buffer.toString());
+                if (distinct)
+                    hashSet.add(buffer.toString());
+                else
+                    result.add(++id + " | " + buffer.toString());
             } else {
                 int index;
                 for (index = queryTables.length - 1; index >= 0; index--) {
@@ -125,17 +129,23 @@ public class Database {
                     currentRows.push(queryTables[i].next());
                 }
                 buffer.add(queryResult.generateQueryRecord(QueryResult.combineRow(currentRows)));
-                result.add(++id + " | " + buffer.toString());
+                if (distinct)
+                    hashSet.add(buffer.toString());
+                else
+                    result.add(++id + " | " + buffer.toString());
             }
         }
+        if (distinct)
+            for (String s : hashSet)
+                result.add(++id + " | " + s);
         return result.toString();
     }
 
-    public String select(String[] columnsProjected, QueryTable[] queryTables, Logic selectLogic) {
+    public String select(String[] columnsProjected, QueryTable[] queryTables, Logic selectLogic, boolean distinct) {
         QueryResult queryResult = new QueryResult(queryTables, columnsProjected);
         for (QueryTable queryTable : queryTables)
             queryTable.setSelectLogic(selectLogic);
-        return buildCartesianProduct(queryTables, queryResult);
+        return buildCartesianProduct(queryTables, queryResult, distinct);
     }
 
     private void recoverDatabase() {

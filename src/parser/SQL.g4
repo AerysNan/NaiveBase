@@ -56,9 +56,6 @@ value_entry :
     '(' literal_value ( ',' literal_value )* ')' ;
 
 select_stmt :
-   select_core ( K_ORDER K_BY column_name ( K_ASC | K_DESC )? )? ;
-
-select_core :
     K_SELECT ( K_DISTINCT | K_ALL )? result_column ( ',' result_column )*
         K_FROM table_query ( ',' table_query )* ( K_WHERE multiple_condition )? ;
 
@@ -152,15 +149,12 @@ T_DOUBLE : D O U B L E;
 T_STRING : S T R I N G;
 
 K_ADD : A D D;
-K_ASC : A S C;
 K_ALL : A L L;
-K_BY : B Y;
 K_COLUMN : C O L U M N;
 K_CREATE : C R E A T E;
 K_DATABASE : D A T A B A S E;
 K_DATABASES : D A T A B A S E S;
 K_DELETE : D E L E T E;
-K_DESC : D E C S;
 K_DISTINCT : D I S T I N C T;
 K_DROP : D R O P;
 K_EXISTS : E X I S T S;
@@ -173,7 +167,6 @@ K_KEY : K E Y;
 K_NOT : N O T;
 K_NULL : N U L L;
 K_ON : O N;
-K_ORDER : O R D E R;
 K_PRIMARY : P R I M A R Y;
 K_QUIT : Q U I T;
 K_SELECT : S E L E C T;

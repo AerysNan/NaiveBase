@@ -127,8 +127,8 @@ public class Manager {
         return sb.toString();
     }
 
-    public String select(String[] columnsProjected, QueryTable[] tablesQueried, Logic selectLogic) {
-        return databases.get(current).select(columnsProjected, tablesQueried, selectLogic);
+    public String select(String[] columnsProjected, QueryTable[] tablesQueried, Logic selectLogic, boolean distinct) {
+        return databases.get(current).select(columnsProjected, tablesQueried, selectLogic, distinct);
     }
 
     public String delete(String tableName, Logic logic) {

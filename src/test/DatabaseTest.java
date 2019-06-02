@@ -67,7 +67,7 @@ public class DatabaseTest {
         Expression left = buildSimpleNumberExpression("1");
         Expression right = buildSimpleNumberExpression("2");
         Condition condition = new Condition(left, right, ComparatorType.EQ);
-        String result = database.select(null, tablesQueried, buildSimpleLogic(condition));
+        String result = database.select(null, tablesQueried, buildSimpleLogic(condition), false);
         assertEquals("No Rows.", result);
     }
 
@@ -78,7 +78,7 @@ public class DatabaseTest {
         Expression left = buildSimpleColumnExpression("id");
         Expression right = buildSimpleNumberExpression("1000");
         Condition condition = new Condition(left, right, ComparatorType.GT);
-        String result = database.select(null, tablesQueried, buildSimpleLogic(condition));
+        String result = database.select(null, tablesQueried, buildSimpleLogic(condition), false);
         assertEquals("No Rows.", result);
     }
 
@@ -89,7 +89,7 @@ public class DatabaseTest {
         Expression left = buildSimpleNumberExpression("1");
         Expression right = buildSimpleNumberExpression("2");
         Condition condition = new Condition(left, right, ComparatorType.LE);
-        String result = database.select(null, tablesQueried, buildSimpleLogic(condition));
+        String result = database.select(null, tablesQueried, buildSimpleLogic(condition), false);
         assertEquals(testNum, result.split("\n").length);
     }
 
@@ -100,7 +100,7 @@ public class DatabaseTest {
         Expression left = buildSimpleNumberExpression("-1000");
         Expression right = buildSimpleColumnExpression("score");
         Condition condition = new Condition(left, right, ComparatorType.LT);
-        String result = database.select(null, tablesQueried, buildSimpleLogic(condition));
+        String result = database.select(null, tablesQueried, buildSimpleLogic(condition), false);
         assertEquals(testNum, result.split("\n").length);
     }
 
@@ -111,7 +111,7 @@ public class DatabaseTest {
         Expression left = buildSimpleColumnExpression("id");
         Expression right = buildSimpleColumnExpression("score");
         Condition condition = new Condition(left, right, ComparatorType.EQ);
-        String result = database.select(null, tablesQueried, buildSimpleLogic(condition));
+        String result = database.select(null, tablesQueried, buildSimpleLogic(condition), false);
         assertEquals(1, result.split("\n").length);
     }
 
@@ -122,7 +122,7 @@ public class DatabaseTest {
         Expression left = buildSimpleColumnExpression("id");
         Expression right = buildSimpleColumnExpression("score");
         Condition condition = new Condition(left, right, ComparatorType.NE);
-        String result = database.select(null, tablesQueried, buildSimpleLogic(condition));
+        String result = database.select(null, tablesQueried, buildSimpleLogic(condition), false);
         assertEquals(testNum - 1, result.split("\n").length);
     }
 
@@ -133,7 +133,7 @@ public class DatabaseTest {
         Expression left = buildSimpleColumnExpression("id");
         Expression right = buildSimpleNumberExpression("1000");
         Condition condition = new Condition(left, right, ComparatorType.LE);
-        String result = database.select(null, tablesQueried, buildSimpleLogic(condition));
+        String result = database.select(null, tablesQueried, buildSimpleLogic(condition), false);
         assertEquals(testNum, result.split("\n").length);
     }
 
@@ -144,7 +144,7 @@ public class DatabaseTest {
         Expression left = buildSimpleColumnExpression("id");
         Expression right = buildSimpleNumberExpression("1000");
         Condition condition = new Condition(left, right, ComparatorType.GT);
-        String result = database.select(null, tablesQueried, buildSimpleLogic(condition));
+        String result = database.select(null, tablesQueried, buildSimpleLogic(condition), false);
         assertEquals("No Rows.", result);
     }
 
@@ -155,7 +155,7 @@ public class DatabaseTest {
         Expression left = buildSimpleNumberExpression("1000");
         Expression right = buildSimpleColumnExpression("score");
         Condition condition = new Condition(left, right, ComparatorType.GT);
-        String result = database.select(null, tablesQueried, buildSimpleLogic(condition));
+        String result = database.select(null, tablesQueried, buildSimpleLogic(condition), false);
         assertEquals(testNum, result.split("\n").length);
     }
 
@@ -166,7 +166,7 @@ public class DatabaseTest {
         Expression left = buildSimpleNumberExpression("1000");
         Expression right = buildSimpleColumnExpression("score");
         Condition condition = new Condition(left, right, ComparatorType.LT);
-        String result = database.select(null, tablesQueried, buildSimpleLogic(condition));
+        String result = database.select(null, tablesQueried, buildSimpleLogic(condition), false);
         assertEquals("No Rows.", result);
     }
 
@@ -177,7 +177,7 @@ public class DatabaseTest {
         Condition onCondition = new Condition(left, right, ComparatorType.EQ);
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = buildSimpleJoinTable("grade", "grades", onCondition);
-        String result = database.select(null, tablesQueried, null);
+        String result = database.select(null, tablesQueried, null, false);
         assertEquals("No Rows.", result);
     }
 
@@ -188,7 +188,7 @@ public class DatabaseTest {
         Condition onCondition = new Condition(left, right, ComparatorType.LT);
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = buildSimpleJoinTable("grade", "grades", onCondition);
-        String result = database.select(null, tablesQueried, null);
+        String result = database.select(null, tablesQueried, null, false);
         assertEquals(testNum * testNum, result.split("\n").length);
     }
 
@@ -199,7 +199,7 @@ public class DatabaseTest {
         Condition onCondition = new Condition(left, right, ComparatorType.EQ);
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = buildSimpleJoinTable("grade", "grades", onCondition);
-        String result = database.select(null, tablesQueried, null);
+        String result = database.select(null, tablesQueried, null, false);
         assertEquals("No Rows.", result);
     }
 
@@ -210,7 +210,7 @@ public class DatabaseTest {
         Condition onCondition = new Condition(left, right, ComparatorType.EQ);
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = buildSimpleJoinTable("grade", "grades", onCondition);
-        String result = database.select(null, tablesQueried, null);
+        String result = database.select(null, tablesQueried, null, false);
         assertEquals(testNum, result.split("\n").length);
     }
 
@@ -221,7 +221,7 @@ public class DatabaseTest {
         Condition onCondition = new Condition(left, right, ComparatorType.LT);
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = buildSimpleJoinTable("grade", "grades", onCondition);
-        String result = database.select(null, tablesQueried, null);
+        String result = database.select(null, tablesQueried, null, false);
         assertEquals(testNum * testNum, result.split("\n").length);
     }
 
@@ -232,7 +232,7 @@ public class DatabaseTest {
         Condition onCondition = new Condition(left, right, ComparatorType.EQ);
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = buildSimpleJoinTable("grade", "grades", onCondition);
-        String result = database.select(null, tablesQueried, null);
+        String result = database.select(null, tablesQueried, null, false);
         assertEquals(testNum, result.split("\n").length);
     }
 
@@ -243,7 +243,7 @@ public class DatabaseTest {
         Condition onCondition = new Condition(left, right, ComparatorType.NE);
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = buildSimpleJoinTable("grade", "grades", onCondition);
-        String result = database.select(null, tablesQueried, null);
+        String result = database.select(null, tablesQueried, null, false);
         assertEquals(testNum * (testNum - 1), result.split("\n").length);
     }
 
@@ -254,7 +254,7 @@ public class DatabaseTest {
         Condition onCondition = new Condition(left, right, ComparatorType.LT);
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = buildSimpleJoinTable("grade", "grades", onCondition);
-        String result = database.select(null, tablesQueried, null);
+        String result = database.select(null, tablesQueried, null, false);
         assertEquals(testNum * testNum, result.split("\n").length);
     }
 
@@ -265,7 +265,7 @@ public class DatabaseTest {
         Condition onCondition = new Condition(left, right, ComparatorType.EQ);
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = buildSimpleJoinTable("grade", "grades", onCondition);
-        String result = database.select(null, tablesQueried, null);
+        String result = database.select(null, tablesQueried, null, false);
         assertEquals(testNum, result.split("\n").length);
     }
 
@@ -276,7 +276,7 @@ public class DatabaseTest {
         Condition onCondition = new Condition(left, right, ComparatorType.EQ);
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = buildSimpleJoinTable("grade", "grades", onCondition);
-        String result = database.select(null, tablesQueried, null);
+        String result = database.select(null, tablesQueried, null, false);
         assertEquals("No Rows.", result);
     }
 
@@ -290,7 +290,7 @@ public class DatabaseTest {
         Condition whereCondition = new Condition(l2, r2, ComparatorType.EQ);
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = buildSimpleJoinTable("grade", "grades", onCondition);
-        String result = database.select(null, tablesQueried, buildSimpleLogic(whereCondition));
+        String result = database.select(null, tablesQueried, buildSimpleLogic(whereCondition), false);
         assertEquals(testNum - 1, result.split("\n").length);
     }
 }
