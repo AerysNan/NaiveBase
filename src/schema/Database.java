@@ -100,33 +100,39 @@ public class Database {
 
     public String select(String[] columnsProjected, QueryTable[] tablesQueried, Logic selectLogic) {
         StringJoiner result = new StringJoiner("\n");
+        QueryResult queryResult;
+        int count = 0;
         if (tablesQueried.length == 1) {
             if (tablesQueried[0] instanceof SimpleTable) {
-                QueryResult queryResult = new QueryResult(((SimpleTable) tablesQueried[0]).getTable(), columnsProjected);
+                queryResult = new QueryResult(((SimpleTable) tablesQueried[0]).getTable(), columnsProjected);
                 tablesQueried[0].setSelectLogic(selectLogic);
                 while ((tablesQueried[0]).hasNext()) {
                     Row row = tablesQueried[0].next();
                     if (row == null) {
                         if (result.length() == 0)
-                            result.add("No Rows.");
+                            result.add("Empty set.");
                         break;
                     }
+                    count++;
                     result.add(queryResult.generateQueryRecord(row));
                 }
             } else {
-                QueryResult queryResult = new QueryResult(((JointTable) tablesQueried[0]).getTables(), columnsProjected);
+                queryResult = new QueryResult(((JointTable) tablesQueried[0]).getTables(), columnsProjected);
                 tablesQueried[0].setSelectLogic(selectLogic);
                 while (tablesQueried[0].hasNext()) {
                     Row row = tablesQueried[0].next();
                     if (row == null) {
                         if (result.length() == 0)
-                            result.add("No Rows.");
+                            result.add("Empty set.");
                         break;
                     }
+                    count++;
                     result.add(queryResult.generateQueryRecord(row));
                 }
             }
-            return result.toString();
+            if (count == 0)
+                return result.toString();
+            return queryResult.getAttrs() + result.toString() + "\n" + count + " rows in set.";
         } else {
             // TODO: more table join
             return "";

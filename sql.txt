@@ -48,3 +48,4 @@ insert into grade values (09, 01, 74.4), (09, 02, 84.6), (09, 03, 89.0);
 insert into grade values (10, 01, 79.2), (10, 02, 87.6), (10, 03, 81.9);
 insert into grade values (11, 01, 73.1), (11, 02, 75.2), (11, 03, 82.5);
 insert into grade values (12, 01, 81.4), (12, 02, 76.9), (12, 03, 78.6);
+select gradE.student_id from grade join student on grade.student_id=student.student_id;

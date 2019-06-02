@@ -62,8 +62,11 @@ public class Server {
             String message = server.read();
             if (!"".equals(message))
                 System.out.println(message.trim());
+            long startTime = System.currentTimeMillis();
             String result = evaluator.evaluate(message);
-            server.write(result.trim());
+            long endTime = System.currentTimeMillis();
+            String time = "\nTime Cost: " + (endTime - startTime) + "ms";
+            server.write(result.trim() + time);
             if (result.contains("Quited."))
                 break;
         }
