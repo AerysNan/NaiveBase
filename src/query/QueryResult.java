@@ -72,7 +72,7 @@ public class QueryResult {
         if (!columnName.contains(".")) {
             for (MetaInfo metaInfo : metaInfoInfos) {
                 for (int j = 0; j < metaInfo.columns.size(); j++) {
-                    if (columnName.toLowerCase().equals(metaInfo.columns.get(j).getName().toLowerCase())) {
+                    if (columnName.equals(metaInfo.columns.get(j).getName())) {
                         found++;
                         index = j + offset;
                     }
@@ -86,7 +86,7 @@ public class QueryResult {
         } else {
             String[] tableInfo = splitColumnFullName(columnName);
             for (MetaInfo metaInfo : metaInfoInfos) {
-                if (metaInfo.tableName.toLowerCase().equals(tableInfo[0].toLowerCase())) {
+                if (metaInfo.tableName.equals(tableInfo[0])) {
                     found++;
                     index = metaInfo.columnFind(tableInfo[1]) + offset;
                 }

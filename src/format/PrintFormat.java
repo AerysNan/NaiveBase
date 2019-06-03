@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.StringJoiner;
 
-public class SelectFormat {
+public class PrintFormat {
 
     private Header header;
     private Body body;
@@ -12,7 +12,7 @@ public class SelectFormat {
     private NullPolicy nullPolicy = NullPolicy.EMPTY_STRING;
     private boolean restrict = false;
 
-    private SelectFormat() {}
+    private PrintFormat() {}
 
     public String getContent() {
         return toString();
@@ -42,49 +42,49 @@ public class SelectFormat {
 
     public static class ConsoleTableBuilder {
 
-        SelectFormat selectFormat = new SelectFormat();
+        PrintFormat printFormat = new PrintFormat();
 
         public ConsoleTableBuilder() {
-            selectFormat.header = new Header();
-            selectFormat.body = new Body();
+            printFormat.header = new Header();
+            printFormat.body = new Body();
         }
 
         public ConsoleTableBuilder addHeaders(List<Cell> headers) {
-            selectFormat.header.addHeads(headers);
+            printFormat.header.addHeads(headers);
             return this;
         }
 
         public ConsoleTableBuilder addRows(List<List<Cell>> rows) {
-            selectFormat.body.addRows(rows);
+            printFormat.body.addRows(rows);
             return this;
         }
 
-        public SelectFormat build() {
+        public PrintFormat build() {
             //compute max column widths
-            if (!selectFormat.header.isEmpty() || !selectFormat.body.isEmpty()) {
+            if (!printFormat.header.isEmpty() || !printFormat.body.isEmpty()) {
                 List<List<Cell>> allRows = new ArrayList<>();
-                allRows.add(selectFormat.header.cells);
-                allRows.addAll(selectFormat.body.rows);
+                allRows.add(printFormat.header.cells);
+                allRows.addAll(printFormat.body.rows);
                 int maxColumn = allRows.stream().map(List::size).mapToInt(size -> size).max().getAsInt();
                 int minColumn = allRows.stream().map(List::size).mapToInt(size -> size).min().getAsInt();
-                if (maxColumn != minColumn && selectFormat.restrict) {
+                if (maxColumn != minColumn && printFormat.restrict) {
                     throw new IllegalArgumentException("number of columns for each row must be the same when strict mode used.");
                 }
-                selectFormat.columnWidths = new int[maxColumn];
+                printFormat.columnWidths = new int[maxColumn];
                 for (List<Cell> row : allRows) {
                     for (int i = 0; i < row.size(); i++) {
                         Cell cell = row.get(i);
                         if (cell == null || cell.getValue() == null) {
-                            cell = selectFormat.nullPolicy.getCell(cell);
+                            cell = printFormat.nullPolicy.getCell(cell);
                             row.set(i, cell);
                         }
                         int length = StringPadUtil.strLength(cell.getValue());
-                        if (selectFormat.columnWidths[i] < length)
-                            selectFormat.columnWidths[i] = length;
+                        if (printFormat.columnWidths[i] < length)
+                            printFormat.columnWidths[i] = length;
                     }
                 }
             }
-            return selectFormat;
+            return printFormat;
         }
     }
 }

@@ -17,7 +17,7 @@ class MetaInfo {
     int columnFind(String name) {
         int found = -1;
         for (int i = 0; i < columns.size(); i++) {
-            if (name.toLowerCase().equals(columns.get(i).getName().toLowerCase()))
+            if (name.equals(columns.get(i).getName()))
                 found = i;
         }
         if (found == -1)
@@ -25,4 +25,3 @@ class MetaInfo {
         return found;
     }
 }
-

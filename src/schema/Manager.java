@@ -2,10 +2,13 @@ package schema;
 
 import exception.*;
 import query.*;
+import format.Cell;
+import format.PrintFormat;
 
 import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 import static global.Global.*;
 
@@ -108,23 +111,37 @@ public class Manager {
     }
 
     public String showDatabases() {
-        StringBuilder sb = new StringBuilder();
-        for (String s : databases.keySet())
-            sb.append(s).append(' ');
-        if (sb.length() == 0)
-            return "--EMPTY--";
-        return sb.toString();
+        ArrayList<Cell> header = new ArrayList<>() {{
+            add(new Cell("Database"));
+        }};
+        List<List<Cell>> body = new ArrayList<>();
+        for (String s : databases.keySet()) {
+            ArrayList<Cell> line = new ArrayList<>() {{
+                add(new Cell(s));
+            }};
+            body.add(line);
+        }
+        if (body.size() == 0)
+            return "Empty set.";
+        return new PrintFormat.ConsoleTableBuilder().addHeaders(header).addRows(body).build().getContent() + "\n" + body.size() + " rows in set.";
     }
 
     public String showTables(String name) {
         if (!databases.containsKey(name))
             throw new DatabaseNotExistsException(name);
-        StringBuilder sb = new StringBuilder();
-        for (String s : databases.get(name).tables.keySet())
-            sb.append(s).append(' ');
-        if (sb.length() == 0)
-            return "--EMPTY--";
-        return sb.toString();
+        ArrayList<Cell> header = new ArrayList<>() {{
+            add(new Cell("Tables_in_" + name));
+        }};
+        List<List<Cell>> body = new ArrayList<>();
+        for (String s : databases.get(name).tables.keySet()) {
+            ArrayList<Cell> line = new ArrayList<>() {{
+                add(new Cell(s));
+            }};
+            body.add(line);
+        }
+        if (body.size() == 0)
+            return "Empty set.";
+        return new PrintFormat.ConsoleTableBuilder().addHeaders(header).addRows(body).build().getContent() + "\n" + body.size() + " rows in set.";
     }
 
     public String select(String[] columnsProjected, QueryTable[] tablesQueried, Logic selectLogic, boolean distinct) {
