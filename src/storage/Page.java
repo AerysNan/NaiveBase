@@ -20,7 +20,7 @@ public class Page {
     }
 
     public static String concatPageName(String databaseName, String tableName, int id) {
-        return Global.dataPath + databaseName + "_" + tableName + "_" + id + ".dat";
+        return Global.dataPath + databaseName + "-" + tableName + "-" + id + ".dat";
     }
 
     public boolean isDirty() {

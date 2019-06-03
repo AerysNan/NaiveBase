@@ -261,7 +261,7 @@ public class Manager {
         if (body.size() == 0)
             return "Empty set.";
         return new PrintFormat.ConsoleTableBuilder().addHeaders(header).addRows(body).build().getContent() + "\n"
-                + body.size() + " rows in set.";
+                + body.size() + (body.size() == 1 ? " row" : " rows") + " in set.";
     }
 
     public String showTables(String name) {
@@ -284,7 +284,7 @@ public class Manager {
         if (body.size() == 0)
             return "Empty set.";
         return new PrintFormat.ConsoleTableBuilder().addHeaders(header).addRows(body).build().getContent() + "\n"
-                + body.size() + " rows in set.";
+                + body.size() + (body.size() == 1 ? " row" : " rows") + " in set.";
     }
 
     public String select(String[] columnsProjected, QueryTable[] queryTables, Logic selectLogic, boolean distinct) {
@@ -364,6 +364,12 @@ public class Manager {
     public void createTable(String tableName, Column[] columns) {
         databases.get(current).createTable(tableName, columns);
         addAuth(user, tableName, AUTH_MAX);
+    }
+
+    public Database getDatabase(String name) {
+        if (!databases.containsKey(name))
+            throw new DatabaseNotExistsException(name);
+        return databases.get(name);
     }
 
     public void quit() {
