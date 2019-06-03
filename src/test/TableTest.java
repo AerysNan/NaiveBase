@@ -30,10 +30,10 @@ public class TableTest {
         Column col2 = new Column("second", ColumnType.INT, 2, false, -1);
         Column col3 = new Column("score", ColumnType.DOUBLE, 0, false, -1);
         Column[] columns = new Column[]{col1, col2, col3};
-        manager.createTable("testComposite", columns);
+        manager.createTable("test_composite", columns);
         for (int i = 0; i < testNum; i++)
             for (int j = 0; j < testNum; j++)
-                manager.insert("testComposite", new String[]{String.valueOf(i), String.valueOf(j), String.valueOf((double) (i * j))}, null);
+                manager.insert("test_composite", new String[]{String.valueOf(i), String.valueOf(j), String.valueOf((double) (i * j))}, null);
         manager.quit();
         manager = new Manager();
         manager.switchDatabase("test");
@@ -46,7 +46,7 @@ public class TableTest {
                         new Entry(j),
                         new Entry((double) (i * j))
                 };
-                assertTrue(manager.get("testComposite", new Entry[]{fst, snd}).toString().contains(new Row(e, -1).toString()));
+                assertTrue(manager.get("test_composite", new Entry[]{fst, snd}).toString().contains(new Row(e, -1).toString()));
             }
         }
     }
@@ -58,9 +58,9 @@ public class TableTest {
         Column col2 = new Column("name", ColumnType.STRING, 0, false, 10);
         Column col3 = new Column("score", ColumnType.DOUBLE, 0, false, -1);
         Column[] columns = new Column[]{col1, col2, col3};
-        manager.createTable("testGet", columns);
+        manager.createTable("test_get", columns);
         for (int i = 0; i < testNum; i++)
-            manager.insert("testGet", new String[]{String.valueOf(i), "'A'", String.valueOf(100 - i)}, null);
+            manager.insert("test_get", new String[]{String.valueOf(i), "'A'", String.valueOf(100 - i)}, null);
         manager.quit();
         manager = new Manager();
         manager.switchDatabase("test");
@@ -71,7 +71,7 @@ public class TableTest {
                     new Entry("A"),
                     new Entry((double) (100 - i))
             };
-            assertEquals(new Row(e, -1).toString(), manager.get("testGet", new Entry[]{key}).toString());
+            assertEquals(new Row(e, -1).toString(), manager.get("test_get", new Entry[]{key}).toString());
         }
     }
 

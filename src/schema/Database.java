@@ -32,7 +32,7 @@ public class Database {
     }
 
     private void persistTableColumn(Table table) {
-        File file = new File(metadataPath + this.dataBaseName + "_" + table.tableName + ".dat");
+        File file = new File(metadataPath + this.dataBaseName + "-" + table.tableName + ".dat");
         FileWriter fileWriter;
         try {
             fileWriter = new FileWriter(file, false);
@@ -85,14 +85,14 @@ public class Database {
         tables.put(tableName, table);
     }
 
-    void deleteAllTable() {
+    public void deleteAllTable() {
         for (String name : tables.keySet())
             deleteTable(name);
         tables.clear();
     }
 
     void deleteTable(String name) {
-        File file = new File(metadataPath + this.dataBaseName + "_" + name + ".dat");
+        File file = new File(metadataPath + this.dataBaseName + "-" + name + ".dat");
         file.delete();
         tables.get(name).deleteAllPage();
     }
@@ -106,19 +106,19 @@ public class Database {
             if (currentRows.isEmpty()) {
                 for (QueryTable queryTable : queryTables) {
                     if (!queryTable.hasNext())
-                        return "No rows.";
+                        return "Empty set.";
                     currentRows.push(queryTable.next());
                 }
                 List<Cell> line = new ArrayList<>();
                 for (Row row : currentRows) {
                     if (row == null)
-                        return "No rows.";
+                        return "Empty set.";
                 }
                 Row row = queryResult.generateQueryRecord(QueryResult.combineRow(currentRows));
                 for (Entry entry : row.getEntries()) {
                     line.add(new Cell(String.valueOf(entry.value)));
                 }
-                if (!distinct || (distinct && !hashSet.contains(row.toString()))) {
+                if (!distinct || !hashSet.contains(row.toString())) {
                     body.add(line);
                     count++;
                     if (distinct)
@@ -143,7 +143,7 @@ public class Database {
                 List<Cell> line = new ArrayList<>();
                 for (Row row : currentRows) {
                     if (row == null)
-                        return "No rows.";
+                        return "Empty set.";
                 }
                 Row row = queryResult.generateQueryRecord(QueryResult.combineRow(currentRows));
                 for (Entry entry : row.getEntries()) {
@@ -157,7 +157,7 @@ public class Database {
                 }
             }
         }
-        return new PrintFormat.ConsoleTableBuilder().addHeaders(queryResult.getAttrs()).addRows(body).build().getContent() + "\n" + count + " rows in set.";
+        return new PrintFormat.ConsoleTableBuilder().addHeaders(queryResult.getAttrs()).addRows(body).build().getContent() + "\n" + count + (count == 1 ? " row" : " rows") + " in set.";
     }
 
     public String select(String[] columnsProjected, QueryTable[] queryTables, Logic selectLogic, boolean distinct) {
@@ -175,7 +175,7 @@ public class Database {
         if (files == null)
             throw new InternalException("failed to get table metadata files.");
         for (File f : files) {
-            String databaseName = f.getName().split("_")[0];
+            String databaseName = f.getName().split("-")[0];
             if (!this.dataBaseName.equals(databaseName))
                 continue;
             recoverTableColumn(f.getName());
@@ -190,7 +190,7 @@ public class Database {
             throw new InternalException("failed to open table metadata file.");
         }
         BufferedReader reader = new BufferedReader(fileReader);
-        String tableName = fileName.split("_")[1].replace(".dat", "");
+        String tableName = fileName.split("-")[1].replace(".dat", "");
         ArrayList<Column> colArrayList = new ArrayList<>();
         String strColumn;
         while (true) {

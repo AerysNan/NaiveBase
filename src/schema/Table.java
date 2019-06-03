@@ -70,8 +70,8 @@ public class Table implements Iterable<Row> {
         int maxPage = Integer.MIN_VALUE;
         int columnSize = columns.size();
         for (File f : files) {
-            String databaseName = f.getName().split("_")[0];
-            String tableName = f.getName().split("_")[1];
+            String databaseName = f.getName().split("-")[0];
+            String tableName = f.getName().split("-")[1];
             if (!(this.databaseName.equals(databaseName) && this.tableName.equals(tableName)))
                 continue;
             ArrayList<Row> rows;
@@ -228,7 +228,7 @@ public class Table implements Iterable<Row> {
         }
         Row row = index.get(entry);
         times.put(row.getPageID(), System.currentTimeMillis());
-        if (row.getEntries() == null) {
+        if (row.getEntries() == null || row.getEntries().size() == 0) {
             if (pageNum >= maxPageNum)
                 putLRUPageToDisk();
             getPageFromDisk(row.getPageID());
@@ -268,7 +268,7 @@ public class Table implements Iterable<Row> {
                 compositeKeyMap.remove(compositeKey);
             }
         }
-        return "Deleted " + count + " rows.";
+        return "Deleted " + count + (count == 1 ? " row." : " rows.");
     }
 
     String update(String columnName, Expression expression, Logic logic) {
@@ -337,7 +337,7 @@ public class Table implements Iterable<Row> {
             int newSize = row.toString().length();
             pages.get(row.getPageID()).updateSize(oldSize, newSize);
         }
-        return "Updated " + count + " rows.";
+        return "Updated " + count + (count == 1 ? " row." : " rows.");
     }
 
     void deleteAllPage() {
@@ -346,8 +346,8 @@ public class Table implements Iterable<Row> {
         if (files == null)
             return;
         for (File f : files) {
-            String databaseName = f.getName().split("_")[0];
-            String tableName = f.getName().split("_")[1];
+            String databaseName = f.getName().split("-")[0];
+            String tableName = f.getName().split("-")[1];
             if (!(this.databaseName.equals(databaseName) && this.tableName.equals(tableName)))
                 continue;
             File deleteFile = new File(dataPath + f.getName());
