@@ -6,36 +6,17 @@ import exception.ColumnNotFoundException;
 import exception.TableNotExistsException;
 import schema.Entry;
 import schema.Row;
+import format.Cell;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedList;
-import java.util.StringJoiner;
+import java.util.List;
 
-public class QueryResult implements Iterator<QueryResult.QueryRecord> {
-    class QueryRecord {
-        ArrayList<Entry> entries;
-
-        QueryRecord() {
-            this.entries = new ArrayList<>();
-        }
-
-        public void add(Entry entry) {
-            entries.add(entry);
-        }
-
-        public String toString() {
-            if (entries.size() == 0)
-                return "";
-            StringJoiner sj = new StringJoiner(", ");
-            for (Entry entry : entries)
-                sj.add(entry.toString());
-            return sj.toString();
-        }
-    }
+public class QueryResult {
 
     private ArrayList<MetaInfo> metaInfoInfos;
     private ArrayList<Integer> index;
+    private List<Cell> attrs;
 
     public QueryResult(QueryTable[] queryTables, String[] selectProjects) {
         this.metaInfoInfos = new ArrayList<>() {{
@@ -47,21 +28,30 @@ public class QueryResult implements Iterator<QueryResult.QueryRecord> {
 
     private void init(String[] selectProjects) {
         this.index = new ArrayList<>();
+        this.attrs = new ArrayList<>();
         if (selectProjects != null) {
-            for (String selectProject : selectProjects)
+            for (String selectProject : selectProjects) {
                 this.index.add(getColumnIndex(selectProject));
+                this.attrs.add(new Cell(selectProject));
+            }
         } else {
             int offset = 0;
             for (MetaInfo metaInfo : metaInfoInfos) {
                 for (int i = 0; i < metaInfo.columns.size(); i++) {
                     if (!"uid".equals(metaInfo.columns.get(i).getName())) {
                         index.add(i + offset);
+                        this.attrs.add(new Cell(metaInfo.columns.get(i).getName()));
                     }
                 }
                 offset += metaInfo.columns.size();
             }
         }
     }
+
+    public List<Cell> getAttrs() {
+        return attrs;
+    }
+
 
     public static Row combineRow(LinkedList<Row> rows) {
         Row result = new Row(-1);
@@ -70,10 +60,10 @@ public class QueryResult implements Iterator<QueryResult.QueryRecord> {
         return result;
     }
 
-    public String generateQueryRecord(Row row) {
-        QueryRecord record = new QueryRecord();
+    public Row generateQueryRecord(Row row) {
+        ArrayList<Entry> record = new ArrayList<>();
         for (Integer integer : index) record.add(row.getEntries().get(integer));
-        return record.toString();
+        return new Row(record.toArray(new Entry[index.size()]), -1);
     }
 
 
@@ -82,7 +72,7 @@ public class QueryResult implements Iterator<QueryResult.QueryRecord> {
         if (!columnName.contains(".")) {
             for (MetaInfo metaInfo : metaInfoInfos) {
                 for (int j = 0; j < metaInfo.columns.size(); j++) {
-                    if (columnName.equals(metaInfo.columns.get(j).getName())) {
+                    if (columnName.toLowerCase().equals(metaInfo.columns.get(j).getName().toLowerCase())) {
                         found++;
                         index = j + offset;
                     }
@@ -96,7 +86,7 @@ public class QueryResult implements Iterator<QueryResult.QueryRecord> {
         } else {
             String[] tableInfo = splitColumnFullName(columnName);
             for (MetaInfo metaInfo : metaInfoInfos) {
-                if (metaInfo.tableName.equals(tableInfo[0])) {
+                if (metaInfo.tableName.toLowerCase().equals(tableInfo[0].toLowerCase())) {
                     found++;
                     index = metaInfo.columnFind(tableInfo[1]) + offset;
                 }
@@ -113,15 +103,5 @@ public class QueryResult implements Iterator<QueryResult.QueryRecord> {
         if (tableInfo.length != 2)
             throw new ColumnNameFormatException();
         return tableInfo;
-    }
-
-    @Override
-    public boolean hasNext() {
-        return false;
-    }
-
-    @Override
-    public QueryRecord next() {
-        return null;
     }
 }
