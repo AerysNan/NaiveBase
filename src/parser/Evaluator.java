@@ -8,8 +8,8 @@ import schema.Manager;
 public class Evaluator {
     private Manager manager;
 
-    public Evaluator() {
-        this.manager = new Manager();
+    public Evaluator(Manager manager) {
+        this.manager = manager;
     }
 
     public String evaluate(String expression) {

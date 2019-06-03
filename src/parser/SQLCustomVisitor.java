@@ -2,6 +2,7 @@ package parser;
 
 import exception.ColumnNotFoundException;
 import exception.ValueFormatException;
+import global.Global;
 import type.LiteralType;
 import javafx.util.Pair;
 import query.*;
@@ -40,8 +41,16 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
             return visitCreate_table_stmt(ctx.create_table_stmt());
         if (ctx.create_db_stmt() != null)
             return visitCreate_db_stmt(ctx.create_db_stmt());
+        if (ctx.create_user_stmt() != null)
+            return visitCreate_user_stmt(ctx.create_user_stmt());
+        if (ctx.drop_user_stmt() != null)
+            return visitDrop_user_stmt(ctx.drop_user_stmt());
         if (ctx.drop_db_stmt() != null)
             return visitDrop_db_stmt(ctx.drop_db_stmt());
+        if (ctx.grant_stmt() != null)
+            return visitGrant_stmt(ctx.grant_stmt());
+        if (ctx.revoke_stmt() != null)
+            return visitRevoke_stmt(ctx.revoke_stmt());
         if (ctx.delete_stmt() != null)
             return visitDelete_stmt(ctx.delete_stmt());
         if (ctx.drop_table_stmt() != null)
@@ -75,6 +84,31 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     }
 
     @Override
+    public String visitCreate_user_stmt(SQLParser.Create_user_stmtContext ctx) {
+        String username = ctx.user_name().getText().toLowerCase();
+        String password = ctx.password().getText();
+        password = password.substring(1, password.length() - 1).toLowerCase();
+        try {
+            manager.createUser(username, password);
+        } catch (Exception e) {
+            return e.getMessage();
+        }
+        return "Created user " + username + ".";
+    }
+
+    @Override
+    public String visitDrop_user_stmt(SQLParser.Drop_user_stmtContext ctx) {
+        String username = ctx.user_name().getText().toLowerCase();
+        boolean exists = ctx.K_IF() == null;
+        try {
+            manager.dropUser(username, exists);
+        } catch (Exception e) {
+            return e.getMessage();
+        }
+        return "Dropped user " + username + ".";
+    }
+
+    @Override
     public String visitDrop_db_stmt(SQLParser.Drop_db_stmtContext ctx) {
         String name = ctx.database_name().getText();
         try {
@@ -86,6 +120,42 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
             return e.getMessage();
         }
         return "Dropped database " + name + ".";
+    }
+
+    @Override
+    public String visitGrant_stmt(SQLParser.Grant_stmtContext ctx) {
+        int[] levels = new int[ctx.auth_level().size()];
+        int totalLevel = 0;
+        for (int i = 0; i < ctx.auth_level().size(); i++)
+            levels[i] = visitAuth_level(ctx.auth_level(i));
+        for (int level : levels)
+            totalLevel |= (1 << level);
+        String username = ctx.user_name().getText().toLowerCase();
+        String tableName = ctx.table_name().getText().toLowerCase();
+        try {
+            manager.addAuth(username, tableName, totalLevel);
+        } catch (Exception e) {
+            return e.getMessage();
+        }
+        return "Granted user " + username + "'s authority on table " + tableName + ".";
+    }
+
+    @Override
+    public String visitRevoke_stmt(SQLParser.Revoke_stmtContext ctx) {
+        int[] levels = new int[ctx.auth_level().size()];
+        int totalLevel = 0;
+        for (int i = 0; i < ctx.auth_level().size(); i++)
+            levels[i] = visitAuth_level(ctx.auth_level(i));
+        for (int level : levels)
+            totalLevel |= (1 << level);
+        String username = ctx.user_name().getText().toLowerCase();
+        String tableName = ctx.table_name().getText().toLowerCase();
+        try {
+            manager.removeAuth(username, tableName, totalLevel);
+        } catch (Exception e) {
+            return e.getMessage();
+        }
+        return "Revoked user " + username + "'s authority on table " + tableName + ".";
     }
 
     @Override
@@ -144,8 +214,13 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     @Override
     public String visitDelete_stmt(SQLParser.Delete_stmtContext ctx) {
         String tableName = ctx.table_name().getText().toLowerCase();
-        if (ctx.K_WHERE() == null)
-            return manager.delete(tableName, null);
+        if (ctx.K_WHERE() == null) {
+            try {
+                return manager.delete(tableName, null);
+            } catch (Exception e) {
+                return e.getMessage();
+            }
+        }
         Logic logic = visitMultiple_condition(ctx.multiple_condition());
         try {
             return manager.delete(tableName, logic);
@@ -255,8 +330,13 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
         String tableName = ctx.table_name().getText().toLowerCase();
         String columnName = ctx.column_name().getText().toLowerCase();
         Expression expression = visitExpression(ctx.expression());
-        if (ctx.K_WHERE() == null)
-            return manager.update(tableName, columnName, expression, null);
+        if (ctx.K_WHERE() == null) {
+            try {
+                return manager.update(tableName, columnName, expression, null);
+            } catch (Exception e) {
+                return e.getMessage();
+            }
+        }
         Logic logic = visitMultiple_condition(ctx.multiple_condition());
         try {
             return manager.update(tableName, columnName, expression, logic);
@@ -284,7 +364,6 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
         int maxLength = type.getValue();
         return new Column(name, columnType, primary, notNull, maxLength);
     }
-
 
     @Override
     public Pair<ColumnType, Integer> visitType_name(SQLParser.Type_nameContext ctx) {
@@ -338,6 +417,19 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
         if (ctx.LE() != null)
             return ComparatorType.LE;
         return null;
+    }
+
+    @Override
+    public Integer visitAuth_level(SQLParser.Auth_levelContext ctx) {
+        if (ctx.K_DELETE() != null)
+            return Global.AUTH_DELETE;
+        if (ctx.K_INSERT() != null)
+            return Global.AUTH_INSERT;
+        if (ctx.K_SELECT() != null)
+            return Global.AUTH_SELECT;
+        if (ctx.K_DROP() != null)
+            return Global.AUTH_DROP;
+        return Global.AUTH_UPDATE;
     }
 
     @Override
@@ -414,7 +506,9 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
         LogicalOpType logicalOpType;
         if (ctx.AND() != null)
             logicalOpType = LogicalOpType.AND;
-        else logicalOpType = LogicalOpType.OR;
-        return new Logic(visitMultiple_condition(ctx.multiple_condition(0)), visitMultiple_condition(ctx.multiple_condition(1)), logicalOpType);
+        else
+            logicalOpType = LogicalOpType.OR;
+        return new Logic(visitMultiple_condition(ctx.multiple_condition(0)),
+                visitMultiple_condition(ctx.multiple_condition(1)), logicalOpType);
     }
 }

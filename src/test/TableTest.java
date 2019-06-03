@@ -39,12 +39,12 @@ public class TableTest {
         manager.switchDatabase("test");
         for (int i = 0; i < testNum; i++) {
             for (int j = 0; j < testNum; j++) {
-                Entry fst = new Entry(0, i);
-                Entry snd = new Entry(1, j);
+                Entry fst = new Entry(i);
+                Entry snd = new Entry(j);
                 Entry[] e = new Entry[]{
-                        new Entry(0, i),
-                        new Entry(1, j),
-                        new Entry(2, (double) (i * j))
+                        new Entry(i),
+                        new Entry(j),
+                        new Entry((double) (i * j))
                 };
                 assertTrue(manager.get("testComposite", new Entry[]{fst, snd}).toString().contains(new Row(e, -1).toString()));
             }
@@ -65,11 +65,11 @@ public class TableTest {
         manager = new Manager();
         manager.switchDatabase("test");
         for (int i = 0; i < testNum; i++) {
-            Entry key = new Entry(0, i);
+            Entry key = new Entry(i);
             Entry[] e = new Entry[]{
-                    new Entry(0, i),
-                    new Entry(1, "A"),
-                    new Entry(2, (double) (100 - i))
+                    new Entry(i),
+                    new Entry("A"),
+                    new Entry((double) (100 - i))
             };
             assertEquals(new Row(e, -1).toString(), manager.get("testGet", new Entry[]{key}).toString());
         }

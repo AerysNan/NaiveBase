@@ -1,9 +1,12 @@
 package schema;
 
 import exception.*;
-import query.*;
 import format.Cell;
 import format.PrintFormat;
+import query.*;
+import type.ColumnType;
+import type.ComparatorType;
+import type.ComparerType;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -15,16 +18,140 @@ import static global.Global.*;
 public class Manager {
     private HashMap<String, Database> databases;
     private String current;
+    private String user;
 
     public Manager() {
+        this.user = adminUserName;
         this.databases = new HashMap<>();
         recoverDatabases();
         createDatabaseIfNotExists(adminDatabaseName);
-        current = adminDatabaseName;
+        this.current = adminDatabaseName;
         dirInit();
+        if (!databases.get(current).tables.containsKey(authTableName)) {
+            createTable(authTableName,
+                    new Column[] { new Column("authority", ColumnType.INT, 0, true, -1),
+                            new Column("username", ColumnType.STRING, 2, true, maxNameLength),
+                            new Column("database_name", ColumnType.STRING, 2, true, maxNameLength),
+                            new Column("table_name", ColumnType.STRING, 2, true, maxNameLength) });
+        }
+        if (!databases.get(current).tables.containsKey(userTableName)) {
+            createTable(userTableName, new Column[] { new Column("username", ColumnType.STRING, 1, true, maxNameLength),
+                    new Column("password", ColumnType.STRING, 0, true, maxNameLength) });
+            createUser(adminUserName, getAdminPassword());
+        }
+    }
+
+    public void addAuth(String username, String tableName, int level) {
+        if (username.equals(adminUserName))
+            return;
+        Database database = databases.get(current);
+        if (!database.tables.containsKey(tableName))
+            throw new TableNotExistsException(tableName);
+        String currentStash = current;
+        current = adminDatabaseName;
+        Table t = databases.get(adminDatabaseName).tables.get(userTableName);
+        if (!t.contains(new Entry[] { new Entry(username) }))
+            throw new UserNotExistException(username);
+        int currentAuth = getAuth(username, currentStash, tableName);
+        if (currentAuth < 0)
+            insert(authTableName, new String[] { String.valueOf(level), toLiteral(username), toLiteral(currentStash),
+                    toLiteral(tableName) }, null);
+        else
+            update(authTableName, "authority",
+                    new Expression(new Comparer(ComparerType.NUMBER, String.valueOf(level | currentAuth))), null);
+        current = currentStash;
+    }
+
+    public void removeAuth(String username, String tableName, int level) {
+        if (username.equals(adminUserName))
+            return;
+        Database database = databases.get(current);
+        if (!database.tables.containsKey(tableName))
+            throw new TableNotExistsException(tableName);
+        String currentStash = current;
+        current = adminDatabaseName;
+        Table t = databases.get(adminDatabaseName).tables.get(userTableName);
+        if (!t.contains(new Entry[] { new Entry(username) }))
+            throw new UserNotExistException(username);
+        int currentAuth = getAuth(username, currentStash, tableName);
+        if (currentAuth == 0)
+            return;
+        else
+            update(authTableName, "authority",
+                    new Expression(new Comparer(ComparerType.NUMBER, String.valueOf(~level & currentAuth))), null);
+        current = currentStash;
+    }
+
+    private int getAuth(String username, String databaseName, String tableName) {
+        Table t = databases.get(adminDatabaseName).tables.get(authTableName);
+        try {
+            Row row = t.get(new Entry[] { null, new Entry(username), new Entry(databaseName), new Entry(tableName) });
+            ArrayList<Entry> entries = row.getEntries();
+            return (int) entries.get(0).value;
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    public void createUser(String username, String password) {
+        Table t = databases.get(adminDatabaseName).tables.get(userTableName);
+        if (t.contains(new Entry[] { new Entry(username) }))
+            throw new UserAlreadyExistsException(user);
+        String currentStash = current;
+        current = adminDatabaseName;
+        insert(userTableName, new String[] { toLiteral(username), toLiteral(encrypt(password)) }, null);
+        current = currentStash;
+    }
+
+    public void dropUser(String username, boolean exists) {
+        Table t = databases.get(adminDatabaseName).tables.get(userTableName);
+        if (!t.contains(new Entry[] { new Entry(username) })) {
+            if (exists)
+                throw new UserNotExistException(user);
+            else
+                return;
+        }
+        String currentStash = current;
+        current = adminDatabaseName;
+        delete(userTableName, new Logic(new Condition(new Expression(new Comparer(ComparerType.COLUMN, "username")),
+                new Expression(new Comparer(ComparerType.STRING, username)), ComparatorType.EQ)));
+        delete(authTableName, new Logic(new Condition(new Expression(new Comparer(ComparerType.COLUMN, "username")),
+                new Expression(new Comparer(ComparerType.STRING, username)), ComparatorType.EQ)));
+        current = currentStash;
+    }
+
+    public boolean login(String username, String password) {
+        Database database = databases.get(adminDatabaseName);
+        try {
+            Row row = database.tables.get(userTableName).get(new Entry[] { new Entry(username) });
+            if (row.getEntries().get(1).value.equals(password)) {
+                user = username;
+                return true;
+            }
+            return false;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private String getAdminPassword() {
+        FileReader reader;
+        try {
+            reader = new FileReader(adminPassWordFileName);
+        } catch (Exception e) {
+            throw new InternalException("failed to open configuration file.");
+        }
+        BufferedReader bufferedReader = new BufferedReader(reader);
+        try {
+            return bufferedReader.readLine();
+        } catch (Exception e) {
+            throw new InternalException("failed to read from configuration file.");
+        }
     }
 
     private void createDatabaseIfNotExists(String name) {
+        if (!user.equals(adminUserName))
+            throw new NoAuthorityException();
         if (databases.containsKey(name))
             return;
         createDatabase(name);
@@ -37,6 +164,8 @@ public class Manager {
     }
 
     public void createDatabase(String name) {
+        if (!user.equals(adminUserName))
+            throw new NoAuthorityException();
         if (databases.containsKey(name))
             throw new DatabaseAlreadyExistsException(name);
         Database database = new Database(name);
@@ -59,25 +188,27 @@ public class Manager {
     }
 
     public void deleteDatabase(String name) {
-        if (name.equals(adminDatabaseName))
-            throw new NoRemovalAuthorityException(name);
+        if (!name.equals(adminDatabaseName))
+            throw new NoAuthorityException();
         if (!databases.containsKey(name))
             throw new DatabaseNotExistsException(name);
         databases.get(name).deleteAllTable();
         databases.remove(name);
     }
 
-    public void deleteTableIfExist(String name) {
-        if (databases.get(current).tables.containsKey(name))
+    public void deleteTableIfExist(String tableName) {
+        if (!databases.get(current).tables.containsKey(tableName))
             return;
-        deleteTable(name);
+        deleteTable(tableName);
     }
 
-    public void deleteTable(String name) {
-        if (!databases.get(current).tables.containsKey(name))
-            throw new TableNotExistsException(name);
-        databases.get(current).deleteTable(name);
-        databases.get(current).tables.remove(name);
+    public void deleteTable(String tableName) {
+        if (!authorized(current, tableName, AUTH_DROP))
+            throw new NoAuthorityException();
+        if (!databases.get(current).tables.containsKey(tableName))
+            throw new TableNotExistsException(tableName);
+        databases.get(current).deleteTable(tableName);
+        databases.get(current).tables.remove(tableName);
     }
 
     private void persistDatabases() {
@@ -97,6 +228,8 @@ public class Manager {
     }
 
     public void insert(String tableName, String[] values, String[] columnNames) {
+        if (!authorized(current, tableName, AUTH_INSERT))
+            throw new NoAuthorityException();
         Database database = databases.get(current);
         if (!database.tables.containsKey(tableName))
             throw new TableNotExistsException(tableName);
@@ -111,44 +244,66 @@ public class Manager {
     }
 
     public String showDatabases() {
-        ArrayList<Cell> header = new ArrayList<>() {{
-            add(new Cell("Database"));
-        }};
+        ArrayList<Cell> header = new ArrayList<>() {
+            {
+                add(new Cell("Database"));
+            }
+        };
         List<List<Cell>> body = new ArrayList<>();
         for (String s : databases.keySet()) {
-            ArrayList<Cell> line = new ArrayList<>() {{
-                add(new Cell(s));
-            }};
+            ArrayList<Cell> line = new ArrayList<>() {
+                {
+                    add(new Cell(s));
+                }
+            };
             body.add(line);
         }
         if (body.size() == 0)
             return "Empty set.";
-        return new PrintFormat.ConsoleTableBuilder().addHeaders(header).addRows(body).build().getContent() + "\n" + body.size() + " rows in set.";
+        return new PrintFormat.ConsoleTableBuilder().addHeaders(header).addRows(body).build().getContent() + "\n"
+                + body.size() + " rows in set.";
     }
 
     public String showTables(String name) {
         if (!databases.containsKey(name))
             throw new DatabaseNotExistsException(name);
-        ArrayList<Cell> header = new ArrayList<>() {{
-            add(new Cell("Tables_in_" + name));
-        }};
+        ArrayList<Cell> header = new ArrayList<>() {
+            {
+                add(new Cell("Tables_in_" + name));
+            }
+        };
         List<List<Cell>> body = new ArrayList<>();
         for (String s : databases.get(name).tables.keySet()) {
-            ArrayList<Cell> line = new ArrayList<>() {{
-                add(new Cell(s));
-            }};
+            ArrayList<Cell> line = new ArrayList<>() {
+                {
+                    add(new Cell(s));
+                }
+            };
             body.add(line);
         }
         if (body.size() == 0)
             return "Empty set.";
-        return new PrintFormat.ConsoleTableBuilder().addHeaders(header).addRows(body).build().getContent() + "\n" + body.size() + " rows in set.";
+        return new PrintFormat.ConsoleTableBuilder().addHeaders(header).addRows(body).build().getContent() + "\n"
+                + body.size() + " rows in set.";
     }
 
-    public String select(String[] columnsProjected, QueryTable[] tablesQueried, Logic selectLogic, boolean distinct) {
-        return databases.get(current).select(columnsProjected, tablesQueried, selectLogic, distinct);
+    public String select(String[] columnsProjected, QueryTable[] queryTables, Logic selectLogic, boolean distinct) {
+        for (QueryTable queryTable : queryTables) {
+            if (queryTable instanceof SimpleTable) {
+                if (!authorized(current, ((SimpleTable) queryTable).getTable().tableName, AUTH_SELECT))
+                    throw new NoAuthorityException();
+            } else {
+                for (Table t : ((JointTable) queryTable).getTables())
+                    if (!authorized(current, t.tableName, AUTH_SELECT))
+                        throw new NoAuthorityException();
+            }
+        }
+        return databases.get(current).select(columnsProjected, queryTables, selectLogic, distinct);
     }
 
     public String delete(String tableName, Logic logic) {
+        if (!authorized(current, tableName, AUTH_DELETE))
+            throw new NoAuthorityException();
         Database database = databases.get(current);
         if (!database.tables.containsKey(tableName))
             throw new TableNotExistsException(tableName);
@@ -156,10 +311,25 @@ public class Manager {
     }
 
     public String update(String tableName, String columnName, Expression expression, Logic logic) {
+        if (!authorized(current, tableName, AUTH_UPDATE))
+            throw new NoAuthorityException();
         Database database = databases.get(current);
         if (!database.tables.containsKey(tableName))
             throw new TableNotExistsException(tableName);
         return database.tables.get(tableName).update(columnName, expression, logic);
+    }
+
+    private boolean authorized(String databaseName, String tableName, int level) {
+        if (user.equals(adminUserName))
+            return true;
+        Table t = databases.get(adminDatabaseName).tables.get(authTableName);
+        try {
+            Row row = t.get(new Entry[] { null, new Entry(user), new Entry(databaseName), new Entry(tableName) });
+            ArrayList<Entry> entries = row.getEntries();
+            return (((int) entries.get(0).value) & (1 << level)) > 0;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private void recoverDatabases() {
@@ -176,7 +346,8 @@ public class Manager {
         String databaseName;
         while (true) {
             try {
-                if ((databaseName = reader.readLine()) == null) break;
+                if ((databaseName = reader.readLine()) == null)
+                    break;
             } catch (IOException e) {
                 throw new InternalException("failed to read from database file.");
             }
@@ -190,8 +361,9 @@ public class Manager {
         }
     }
 
-    public void createTable(String name, Column[] columns) {
-        databases.get(current).createTable(name, columns);
+    public void createTable(String tableName, Column[] columns) {
+        databases.get(current).createTable(tableName, columns);
+        addAuth(user, tableName, AUTH_MAX);
     }
 
     public void quit() {

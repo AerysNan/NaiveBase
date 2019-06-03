@@ -39,8 +39,8 @@ public final class BPlusTree<K extends Comparable<K>, V> implements Iterable<V> 
         }
     }
 
-    public boolean containsKey(K key) {
-        if (key == null) throw new IllegalArgumentException("argument key to containsKey() is null");
+    public boolean contains(K key) {
+        if (key == null) throw new IllegalArgumentException("argument key to contains() is null");
         return root.containsKey(key);
     }
 
