@@ -3,6 +3,8 @@ package schema;
 import exception.*;
 import query.*;
 import type.ColumnType;
+import selectFormat.Cell;
+import selectFormat.SelectFormat;
 
 import java.io.*;
 import java.nio.file.Paths;
@@ -96,23 +98,33 @@ public class Database {
     }
 
     private String buildCartesianProduct(QueryTable[] queryTables, QueryResult queryResult, boolean distinct) {
-        int id = 0;
+        int count = 0;
         HashSet<String> hashSet = new HashSet<>();
-        StringJoiner result = new StringJoiner("\n");
+        List<List<Cell>> body = new ArrayList<>();
         LinkedList<Row> currentRows = new LinkedList<>();
         while (true) {
-            StringJoiner buffer = new StringJoiner(", ");
             if (currentRows.isEmpty()) {
                 for (QueryTable queryTable : queryTables) {
                     if (!queryTable.hasNext())
                         return "No rows.";
                     currentRows.push(queryTable.next());
                 }
-                buffer.add(queryResult.generateQueryRecord(QueryResult.combineRow(currentRows)));
-                if (distinct)
-                    hashSet.add(buffer.toString());
-                else
-                    result.add(++id + " | " + buffer.toString());
+                List<Cell> line = new ArrayList<>();
+                for (Row row : currentRows) {
+                    if (row == null)
+                        return "No rows.";
+                }
+                Row row = queryResult.generateQueryRecord(QueryResult.combineRow(currentRows));
+                for (Entry entry : row.getEntries()) {
+                    line.add(new Cell(String.valueOf(entry.value)));
+                }
+                if (!distinct || (distinct && !hashSet.contains(row.toString()))) {
+                    body.add(line);
+                    count++;
+                    if (distinct)
+                        hashSet.add(row.toString());
+
+                }
             } else {
                 int index;
                 for (index = queryTables.length - 1; index >= 0; index--) {
@@ -128,17 +140,24 @@ public class Database {
                         break;
                     currentRows.push(queryTables[i].next());
                 }
-                buffer.add(queryResult.generateQueryRecord(QueryResult.combineRow(currentRows)));
-                if (distinct)
-                    hashSet.add(buffer.toString());
-                else
-                    result.add(++id + " | " + buffer.toString());
+                List<Cell> line = new ArrayList<>();
+                for (Row row : currentRows) {
+                    if (row == null)
+                        return "No rows.";
+                }
+                Row row = queryResult.generateQueryRecord(QueryResult.combineRow(currentRows));
+                for (Entry entry : row.getEntries()) {
+                    line.add(new Cell(String.valueOf(entry.value)));
+                }
+                if (!distinct || !hashSet.contains(row.toString())) {
+                    body.add(line);
+                    count++;
+                    if (distinct)
+                        hashSet.add(row.toString());
+                }
             }
         }
-        if (distinct)
-            for (String s : hashSet)
-                result.add(++id + " | " + s);
-        return result.toString();
+        return new SelectFormat.ConsoleTableBuilder().addHeaders(queryResult.getAttrs()).addRows(body).build().getContent() + "\n" + count + " rows in set.";
     }
 
     public String select(String[] columnsProjected, QueryTable[] queryTables, Logic selectLogic, boolean distinct) {
