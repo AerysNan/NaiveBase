@@ -4,7 +4,7 @@ import exception.*;
 import query.*;
 import type.ColumnType;
 import format.Cell;
-import format.SelectFormat;
+import format.PrintFormat;
 
 import java.io.*;
 import java.nio.file.Paths;
@@ -157,7 +157,7 @@ public class Database {
                 }
             }
         }
-        return new SelectFormat.ConsoleTableBuilder().addHeaders(queryResult.getAttrs()).addRows(body).build().getContent() + "\n" + count + " rows in set.";
+        return new PrintFormat.ConsoleTableBuilder().addHeaders(queryResult.getAttrs()).addRows(body).build().getContent() + "\n" + count + " rows in set.";
     }
 
     public String select(String[] columnsProjected, QueryTable[] queryTables, Logic selectLogic, boolean distinct) {
