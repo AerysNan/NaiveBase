@@ -3,6 +3,7 @@ package schema;
 import exception.*;
 import query.*;
 import type.ColumnType;
+import selectFormat.*;
 
 import java.io.*;
 import java.nio.file.Paths;
@@ -10,6 +11,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.ArrayList;
 import java.util.StringJoiner;
+import java.util.List;
 
 import static global.Global.*;
 
@@ -100,6 +102,7 @@ public class Database {
 
     public String select(String[] columnsProjected, QueryTable[] tablesQueried, Logic selectLogic) {
         StringJoiner result = new StringJoiner("\n");
+        List<List<Cell>> body = new ArrayList<List<Cell>>();
         QueryResult queryResult;
         int count = 0;
         if (tablesQueried.length == 1) {
@@ -109,12 +112,16 @@ public class Database {
                 while ((tablesQueried[0]).hasNext()) {
                     Row row = tablesQueried[0].next();
                     if (row == null) {
-                        if (result.length() == 0)
-                            result.add("Empty set.");
+                        if (body.size() == 0)
+                            return "Empty set.";
                         break;
                     }
                     count++;
-                    result.add(queryResult.generateQueryRecord(row));
+                    List<Cell> line = new ArrayList<>();
+                    for (Entry entry : queryResult.generateQueryRecord(row).getEntries()) {
+                        line.add(new Cell(String.valueOf(entry.value)));
+                    }
+                    body.add(line);
                 }
             } else {
                 queryResult = new QueryResult(((JointTable) tablesQueried[0]).getTables(), columnsProjected);
@@ -123,16 +130,20 @@ public class Database {
                     Row row = tablesQueried[0].next();
                     if (row == null) {
                         if (result.length() == 0)
-                            result.add("Empty set.");
+                            return "Empty set.";
                         break;
                     }
                     count++;
-                    result.add(queryResult.generateQueryRecord(row));
+                    List<Cell> line = new ArrayList<>();
+                    for (Entry entry : queryResult.generateQueryRecord(row).getEntries()) {
+                        line.add(new Cell(String.valueOf(entry.value)));
+                    }
+                    body.add(line);
                 }
             }
             if (count == 0)
                 return result.toString();
-            return queryResult.getAttrs() + result.toString() + "\n" + count + " rows in set.";
+            return new selectFormat.ConsoleTableBuilder().addHeaders(queryResult.getAttrs()).addRows(body).build().getContent() + "\n" + count + " rows in set.";
         } else {
             // TODO: more table join
             return "";

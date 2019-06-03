@@ -101,7 +101,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
             if (compositeNames.length == 1) {
                 boolean found = false;
                 for (Column c : columns) {
-                    if (c.getName().equals(compositeNames[0])) {
+                    if (c.getName().toLowerCase().equals(compositeNames[0].toLowerCase())) {
                         c.setPrimary(1);
                         found = true;
                     }
@@ -112,7 +112,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
                 for (String compositeName : compositeNames) {
                     boolean found = false;
                     for (Column c : columns) {
-                        if (c.getName().equals(compositeName)) {
+                        if (c.getName().toLowerCase().equals(compositeName.toLowerCase())) {
                             c.setPrimary(2);
                             found = true;
                         }
@@ -242,7 +242,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
         }
         int queryCount = ctx.table_query().size();
         QueryTable[] tablesQueried = new QueryTable[queryCount];
-        for (int i = 0; i < columnCount; i++)
+        for (int i = 0; i < queryCount; i++)
             tablesQueried[i] = visitTable_query(ctx.table_query(i));
         Logic logic = null;
         if (ctx.K_WHERE() != null)

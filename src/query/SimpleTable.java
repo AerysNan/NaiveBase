@@ -1,6 +1,7 @@
 package query;
 
 import exception.InvalidComparisionException;
+import exception.KeyNotExistException;
 import global.Global;
 import schema.*;
 import java.util.*;
@@ -62,8 +63,12 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
             switch (whereCondition.type) {
                 case EQ: {
                     if (isFirst) {
-                        Row row = table.index.get(new Entry(index, table.comparerValueToEntryValue(constValue, index)));
-                        queue.add(row);
+                        try {
+                            Row row = table.index.get(new Entry(index, table.comparerValueToEntryValue(constValue, index)));
+                            queue.add(row);
+                        } catch (KeyNotExistException e) {
+                            return;
+                        }
                     }
                     break;
                 }

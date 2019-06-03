@@ -10,32 +10,11 @@ import schema.Row;
 import schema.Table;
 
 import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.StringJoiner;
+import java.util.List;
+import selectFormat.*;
 
-public class QueryResult implements Iterator<QueryResult.QueryRecord> {
-    class QueryRecord {
-        int id;
-        ArrayList<Entry> entries;
+public class QueryResult {
 
-        QueryRecord(int id) {
-            this.id = id;
-            this.entries = new ArrayList<>();
-        }
-
-        public void add(Entry entry) {
-            entries.add(entry);
-        }
-
-        public String toString() {
-            if (entries.size() == 0)
-                return "";
-            StringJoiner sj = new StringJoiner("\t\t\t|");
-            for (Entry entry : entries)
-                sj.add(entry.toString());
-            return id + "\t\t|" + sj.toString();
-        }
-    }
 
     private class TableMetaInfo {
         String name;
@@ -61,8 +40,7 @@ public class QueryResult implements Iterator<QueryResult.QueryRecord> {
 
     private ArrayList<TableMetaInfo> metaInfos;
     private ArrayList<Integer> index;
-    private String attr;
-    private int queryResultNum;
+    private List<Cell> attr;
 
     public QueryResult(Table table, String[] selectProjects) {
         this.metaInfos = new ArrayList<TableMetaInfo>() {{
@@ -80,14 +58,12 @@ public class QueryResult implements Iterator<QueryResult.QueryRecord> {
     }
 
     private void init(String[] selectProjects) {
-        this.queryResultNum = 0;
         this.index = new ArrayList<>();
-        StringJoiner attr = new StringJoiner("\t|");
-        attr.add("Number:");
+        this.attr = new ArrayList<>();
         if (selectProjects != null) {
             for (String selectProject : selectProjects) {
                 this.index.add(getColumnIndex(selectProject));
-                attr.add(selectProject);
+                attr.add(new Cell(selectProject));
             }
         } else {
             int offset = 0;
@@ -95,23 +71,22 @@ public class QueryResult implements Iterator<QueryResult.QueryRecord> {
                 for (int i = 0; i < metaInfo.columns.size(); i++) {
                     if (!"uid".equals(metaInfo.columns.get(i).getName())) {
                         index.add(i + offset);
-                        attr.add(metaInfo.columns.get(i).getName());
+                        attr.add(new Cell(metaInfo.columns.get(i).getName()));
                     }
                 }
                 offset += metaInfo.columns.size();
             }
         }
-        this.attr = attr.toString();
     }
 
-    public String getAttrs() {
-        return this.attr + "\n";
+    public List<Cell> getAttrs() {
+        return this.attr;
     }
 
-    public String generateQueryRecord(Row row) {
-        QueryRecord record = new QueryRecord(++queryResultNum);
+    public Row generateQueryRecord(Row row) {
+        ArrayList<Entry> record = new ArrayList<>();
         for (Integer integer : index) record.add(row.getEntries().get(integer));
-        return record.toString();
+        return new Row(record.toArray(new Entry[index.size()]), 0);
     }
 
 
@@ -151,15 +126,5 @@ public class QueryResult implements Iterator<QueryResult.QueryRecord> {
         if (tableInfo.length != 2)
             throw new ColumnNameFormatException();
         return tableInfo;
-    }
-
-    @Override
-    public boolean hasNext() {
-        return false;
-    }
-
-    @Override
-    public QueryRecord next() {
-        return null;
     }
 }
