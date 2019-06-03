@@ -133,7 +133,7 @@ public class JointTable extends QueryTable implements Iterator<Row> {
             if (index >= table1.columns.size()) {
                 Row row;
                 try {
-                    row = table2.index.get(new Entry(0, table2.comparerValueToEntryValue(value, index - table1.columns.size())));
+                    row = table2.index.get(new Entry(table2.comparerValueToEntryValue(value, index - table1.columns.size())));
                 } catch (KeyNotExistException e) {
                     return;
                 }
@@ -147,7 +147,7 @@ public class JointTable extends QueryTable implements Iterator<Row> {
             } else {
                 Row row;
                 try {
-                    row = table1.index.get(new Entry(0, table1.comparerValueToEntryValue(value, index)));
+                    row = table1.index.get(new Entry(table1.comparerValueToEntryValue(value, index)));
                 } catch (KeyNotExistException e) {
                     return;
                 }
@@ -161,7 +161,7 @@ public class JointTable extends QueryTable implements Iterator<Row> {
             }
         } else {
             if (index >= table1.columns.size()) {
-                ArrayList<Row> rows = table2.getBySecondaryIndex(table2.columns.get(index - table1.columns.size()), new Entry(0, table2.comparerValueToEntryValue(value, index - table1.columns.size())));
+                ArrayList<Row> rows = table2.getBySecondaryIndex(table2.columns.get(index - table1.columns.size()), new Entry(table2.comparerValueToEntryValue(value, index - table1.columns.size())));
                 if (rows == null)
                     return;
                 if (iterator1.hasNext()) {
@@ -173,7 +173,7 @@ public class JointTable extends QueryTable implements Iterator<Row> {
                     }
                 }
             } else {
-                ArrayList<Row> rows = table1.getBySecondaryIndex(table1.columns.get(index), new Entry(0, table1.comparerValueToEntryValue(value, index)));
+                ArrayList<Row> rows = table1.getBySecondaryIndex(table1.columns.get(index), new Entry(table1.comparerValueToEntryValue(value, index)));
                 if (rows == null)
                     return;
                 if (iterator2.hasNext()) {

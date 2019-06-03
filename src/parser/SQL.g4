@@ -9,11 +9,15 @@ sql_stmt_list :
 sql_stmt :
     create_table_stmt
     | create_db_stmt
+    | create_user_stmt
     | drop_db_stmt
+    | drop_user_stmt
     | delete_stmt
     | drop_table_stmt
     | insert_stmt
     | select_stmt
+    | grant_stmt
+    | revoke_stmt
     | use_db_stmt
     | show_db_stmt
     | show_table_stmt
@@ -26,9 +30,21 @@ create_db_stmt :
 drop_db_stmt :
     K_DROP K_DATABASE ( K_IF K_EXISTS )? database_name ;
 
+create_user_stmt :
+    K_CREATE K_USER user_name K_IDENTIFIED K_BY password ;
+
+drop_user_stmt :
+    K_DROP K_USER ( K_IF K_EXISTS )? user_name ;
+
 create_table_stmt :
     K_CREATE K_TABLE table_name
         '(' column_def ( ',' column_def )* ( ',' table_constraint )? ')' ;
+
+grant_stmt :
+    K_GRANT auth_level ( ',' auth_level )* K_ON table_name K_TO user_name ;
+
+revoke_stmt :
+    K_REVOKE auth_level ( ',' auth_level )* K_ON table_name K_FROM user_name ;
 
 use_db_stmt :
     K_USE database_name;
@@ -110,10 +126,16 @@ table_query :
     table_name
     | table_name ( K_JOIN table_name )+ K_ON multiple_condition ;
 
+auth_level :
+    K_SELECT | K_INSERT | K_UPDATE | K_DELETE | K_DROP ;
+
 literal_value :
     NUMERIC_LITERAL
     | STRING_LITERAL
     | K_NULL ;
+
+column_full_name:
+    ( table_name '.' )? column_name ;
 
 database_name :
     IDENTIFIER ;
@@ -121,11 +143,14 @@ database_name :
 table_name :
     IDENTIFIER ;
 
-column_full_name:
-    ( table_name '.' )? column_name ;
+user_name :
+    IDENTIFIER ;
 
 column_name :
     IDENTIFIER ;
+
+password :
+    STRING_LITERAL ;
 
 EQ : '=';
 NE : '<>';
@@ -150,6 +175,7 @@ T_STRING : S T R I N G;
 
 K_ADD : A D D;
 K_ALL : A L L;
+K_BY : B Y;
 K_COLUMN : C O L U M N;
 K_CREATE : C R E A T E;
 K_DATABASE : D A T A B A S E;
@@ -159,7 +185,9 @@ K_DISTINCT : D I S T I N C T;
 K_DROP : D R O P;
 K_EXISTS : E X I S T S;
 K_FROM : F R O M;
+K_GRANT : G R A N T;
 K_IF : I F;
+K_IDENTIFIED : I D E N T I F I E D;
 K_INSERT : I N S E R T;
 K_INTO : I N T O;
 K_JOIN : J O I N;
@@ -169,12 +197,15 @@ K_NULL : N U L L;
 K_ON : O N;
 K_PRIMARY : P R I M A R Y;
 K_QUIT : Q U I T;
+K_REVOKE : R E V O K E;
 K_SELECT : S E L E C T;
 K_SET : S E T;
 K_SHOW : S H O W;
 K_TABLE : T A B L E;
+K_TO : T O;
 K_UPDATE : U P D A T E;
 K_USE : U S E;
+K_USER : U S E R;
 K_VALUES : V A L U E S;
 K_WHERE : W H E R E;
 
