@@ -1,25 +1,43 @@
 package client;
 
+import global.Global;
+
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Scanner;
 
 public class Client {
+    private static ServerSocket serverSocket;
+    private static Socket readSocket;
+    private static Socket writeSocket;
     private static BufferedReader reader;
     private static BufferedWriter writer;
 
     private Client(String ip, int port) throws IOException {
-        Socket writeSocket = new Socket(ip, port);
+        writeSocket = new Socket(ip, port);
         writer = new BufferedWriter(new OutputStreamWriter(writeSocket.getOutputStream()));
-        write("localhost 8081\n");
-        ServerSocket serverSocket = new ServerSocket(8081);
-        Socket readSocket = serverSocket.accept();
+        write("localhost 8081");
+        serverSocket = new ServerSocket(8081);
+        readSocket = serverSocket.accept();
         reader = new BufferedReader(new InputStreamReader(readSocket.getInputStream()));
         System.out.println("Successfully connected to server!");
+        Scanner sc = new Scanner(System.in);
+        System.out.println("username: ");
+        String username = sc.nextLine();
+        System.out.println("password: ");
+        String password = Global.encrypt(sc.nextLine());
+        write(username + " " + password);
+        if (read().startsWith("OK"))
+            System.out.println("Successfully logged in!");
+        else {
+            System.out.println("Invalid username or password!");
+            clean();
+            System.exit(0);
+        }
     }
 
-    private String read() {
+    private static String read() {
         try {
             StringBuilder message = new StringBuilder();
             String s;
@@ -32,7 +50,7 @@ public class Client {
         }
     }
 
-    private void write(String message) {
+    private static void write(String message) {
         try {
             writer.write(message + "\n--END--");
             writer.newLine();
@@ -42,7 +60,7 @@ public class Client {
         }
     }
 
-    private String importSQLText(String command) {
+    private static String importSQLText(String command) {
         String[] data = command.replaceAll(";", "").split(" ");
         String fileName;
         if (data.length <= 1) {
@@ -66,10 +84,22 @@ public class Client {
         }
     }
 
-    public static void main(String[] args) {
-        Client client = null;
+    private static void clean() {
         try {
-            client = new Client("localhost", 8080);
+            reader.close();
+            readSocket.close();
+            writer.close();
+            writeSocket.close();
+            serverSocket.close();
+        } catch (IOException e) {
+            System.err.println("Failed to close socket! Error message: " + e.getMessage());
+            System.exit(-1);
+        }
+    }
+
+    public static void main(String[] args) {
+        try {
+            new Client("localhost", 8080);
         } catch (IOException e) {
             System.err.println("Failed to start client! Error message: " + e.getMessage());
             System.exit(-1);
@@ -81,16 +111,17 @@ public class Client {
             if (message.isEmpty())
                 continue;
             if (message.contains("import")) {
-                String request = client.importSQLText(message);
+                String request = importSQLText(message);
                 if (request.length() == 0) continue;
                 else message = request;
             }
-            client.write(message.trim());
-            String response = client.read();
+            write(message.trim());
+            String response = read();
             System.out.println(response.trim());
             if (response.contains("Quited."))
                 break;
         }
         sc.close();
+        clean();
     }
 }

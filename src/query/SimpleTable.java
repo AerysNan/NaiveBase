@@ -78,7 +78,7 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
                 case EQ: {
                     if (isFirst) {
                         try {
-                            Row row = table.index.get(new Entry(index, table.comparerValueToEntryValue(constValue, index)));
+                            Row row = table.index.get(new Entry(table.comparerValueToEntryValue(constValue, index)));
                             queue.add(row);
                         } catch (KeyNotExistException e) {
                             return;
@@ -89,7 +89,7 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
                 case NE: {
                     while (iterator.hasNext()) {
                         Row row = iterator.next();
-                        if (row.getEntries().get(index).compareTo(new Entry(index, table.comparerValueToEntryValue(constValue, index))) != 0) {
+                        if (row.getEntries().get(index).compareTo(new Entry(table.comparerValueToEntryValue(constValue, index))) != 0) {
                             queue.add(row);
                             break;
                         }
@@ -99,7 +99,7 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
                 case LT: {
                     while (iterator.hasNext()) {
                         Row row = iterator.next();
-                        if (row.getEntries().get(index).compareTo(new Entry(index, table.comparerValueToEntryValue(constValue, index))) < 0) {
+                        if (row.getEntries().get(index).compareTo(new Entry(table.comparerValueToEntryValue(constValue, index))) < 0) {
                             queue.add(row);
                             break;
                         }
@@ -109,7 +109,7 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
                 case LE: {
                     while (iterator.hasNext()) {
                         Row row = iterator.next();
-                        if (row.getEntries().get(index).compareTo(new Entry(index, table.comparerValueToEntryValue(constValue, index))) <= 0) {
+                        if (row.getEntries().get(index).compareTo(new Entry(table.comparerValueToEntryValue(constValue, index))) <= 0) {
                             queue.add(row);
                             break;
                         }
@@ -119,7 +119,7 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
                 case GT: {
                     while (iterator.hasNext()) {
                         Row row = iterator.next();
-                        if (row.getEntries().get(index).compareTo(new Entry(index, table.comparerValueToEntryValue(constValue, index))) > 0) {
+                        if (row.getEntries().get(index).compareTo(new Entry(table.comparerValueToEntryValue(constValue, index))) > 0) {
                             queue.add(row);
                             break;
                         }
@@ -129,7 +129,7 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
                 case GE: {
                     while (iterator.hasNext()) {
                         Row row = iterator.next();
-                        if (row.getEntries().get(index).compareTo(new Entry(index, table.comparerValueToEntryValue(constValue, index))) >= 0) {
+                        if (row.getEntries().get(index).compareTo(new Entry(table.comparerValueToEntryValue(constValue, index))) >= 0) {
                             queue.add(row);
                             break;
                         }
@@ -141,7 +141,7 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
             switch (whereCondition.type) {
                 case EQ: {
                     if (isFirst) {
-                        ArrayList<Row> rows = table.getBySecondaryIndex(table.columns.get(index), new Entry(index, table.comparerValueToEntryValue(constValue, index)));
+                        ArrayList<Row> rows = table.getBySecondaryIndex(table.columns.get(index), new Entry(table.comparerValueToEntryValue(constValue, index)));
                         if (rows == null)
                             return;
                         queue.addAll(rows);
@@ -151,7 +151,7 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
                 case NE: {
                     while (iterator.hasNext()) {
                         Row row = iterator.next();
-                        if (row.getEntries().get(index).compareTo(new Entry(index, table.comparerValueToEntryValue(constValue, index))) != 0) {
+                        if (row.getEntries().get(index).compareTo(new Entry(table.comparerValueToEntryValue(constValue, index))) != 0) {
                             ArrayList<Row> rows = table.getBySecondaryIndex(table.columns.get(index), row.getEntries().get(index));
                             if (rows == null)
                                 return;
@@ -161,20 +161,20 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
                     break;
                 }
                 case LT: {
-                    SortedMap secondaryIndex = table.secondaryIndexList.get(table.columns.get(index).getName()).headMap(new Entry(index, table.comparerValueToEntryValue(constValue, index)));
+                    SortedMap secondaryIndex = table.secondaryIndexList.get(table.columns.get(index).getName()).headMap(new Entry(table.comparerValueToEntryValue(constValue, index)));
                     if (this.mapIterator == null)
                         this.mapIterator = secondaryIndex.entrySet().iterator();
                     getRowsFromSortedMap(secondaryIndex, index);
                     break;
                 }
                 case LE: {
-                    SortedMap secondaryIndex = table.secondaryIndexList.get(table.columns.get(index).getName()).headMap(new Entry(index, table.comparerValueToEntryValue(constValue, index)));
+                    SortedMap secondaryIndex = table.secondaryIndexList.get(table.columns.get(index).getName()).headMap(new Entry(table.comparerValueToEntryValue(constValue, index)));
                     if (this.mapIterator == null)
                         this.mapIterator = secondaryIndex.entrySet().iterator();
                     if (mapIterator.hasNext())
                         getRowsFromSortedMap(secondaryIndex, index);
                     else {
-                        ArrayList<Row> rows = table.getBySecondaryIndex(table.columns.get(index), new Entry(index, table.comparerValueToEntryValue(constValue, index)));
+                        ArrayList<Row> rows = table.getBySecondaryIndex(table.columns.get(index), new Entry(table.comparerValueToEntryValue(constValue, index)));
                         if (rows == null)
                             return;
                         queue.addAll(rows);
@@ -182,16 +182,16 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
                     break;
                 }
                 case GT: {
-                    SortedMap secondaryIndex = table.secondaryIndexList.get(table.columns.get(index).getName()).tailMap(new Entry(index, table.comparerValueToEntryValue(constValue, index)));
+                    SortedMap secondaryIndex = table.secondaryIndexList.get(table.columns.get(index).getName()).tailMap(new Entry(table.comparerValueToEntryValue(constValue, index)));
                     if (secondaryIndex.size() != 0)
-                        secondaryIndex.remove(new Entry(index, table.comparerValueToEntryValue(constValue, index)));
+                        secondaryIndex.remove(new Entry(table.comparerValueToEntryValue(constValue, index)));
                     if (this.mapIterator == null)
                         this.mapIterator = secondaryIndex.entrySet().iterator();
                     getRowsFromSortedMap(secondaryIndex, index);
                     break;
                 }
                 case GE: {
-                    SortedMap secondaryIndex = table.secondaryIndexList.get(table.columns.get(index).getName()).tailMap(new Entry(index, table.comparerValueToEntryValue(constValue, index)));
+                    SortedMap secondaryIndex = table.secondaryIndexList.get(table.columns.get(index).getName()).tailMap(new Entry(table.comparerValueToEntryValue(constValue, index)));
                     if (this.mapIterator == null)
                         this.mapIterator = secondaryIndex.entrySet().iterator();
                     getRowsFromSortedMap(secondaryIndex, index);
@@ -210,5 +210,9 @@ public class SimpleTable extends QueryTable implements Iterator<Row> {
                 return;
             queue.addAll(rows);
         }
+    }
+
+    public Table getTable() {
+        return table;
     }
 }

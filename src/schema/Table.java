@@ -149,10 +149,10 @@ public class Table implements Iterable<Row> {
             }
             if (column.type == ColumnType.STRING && value != null && String.valueOf(value).length() > column.maxLength)
                 throw new StringExceedMaxLengthException(column.name);
-            entries[i] = new Entry(i, (Comparable) value);
+            entries[i] = new Entry((Comparable) value);
         }
         if (hasUID) {
-            Entry uidEntry = new Entry(entries.length - 1, ++uid);
+            Entry uidEntry = new Entry(++uid);
             entries[entries.length - 1] = uidEntry;
             if (hasComposite) {
                 CompositeKey compositeKey = getCompositeKey(new ArrayList<>(Arrays.asList(entries)));
@@ -205,6 +205,19 @@ public class Table implements Iterable<Row> {
         return new CompositeKey(list);
     }
 
+    public boolean contains(Entry[] entries) {
+        Entry entry;
+        if (entries.length == 1)
+            entry = entries[0];
+        else {
+            CompositeKey compositeKey = getCompositeKey(new ArrayList<>(Arrays.asList(entries)));
+            if (!compositeKeyMap.containsKey(compositeKey))
+                return false;
+            entry = compositeKeyMap.get(compositeKey);
+        }
+        return index.contains(entry);
+    }
+
     public Row get(Entry[] entries) {
         Entry entry;
         if (entries.length == 1)
@@ -250,6 +263,10 @@ public class Table implements Iterable<Row> {
                     continue;
                 deleteSecondaryIndex(row, i);
             }
+            if (hasComposite) {
+                CompositeKey compositeKey = getCompositeKey(row.getEntries());
+                compositeKeyMap.remove(compositeKey);
+            }
         }
         return "Deleted " + count + " rows.";
     }
@@ -288,14 +305,17 @@ public class Table implements Iterable<Row> {
             count++;
             int oldSize = row.toString().length();
             Entry oldEntry = row.getEntries().get(columnIndex);
-            Entry newEntry = new Entry(columnIndex, comparerValueToEntryValue(evalExpressionValue(expression, row), columnIndex));
+            Entry newEntry = new Entry(comparerValueToEntryValue(evalExpressionValue(expression, row), columnIndex));
+            CompositeKey oldCompositeKey = null;
+            if(hasComposite)
+                oldCompositeKey = getCompositeKey(row.getEntries());
             if (column.primary == 1) {
                 for (int i = 0; i < columns.size(); i++)
                     if (i != primaryIndex)
                         deleteSecondaryIndex(row, i);
                 row.entries.set(columnIndex, newEntry);
                 pages.get(row.getPageID()).updatePrimaryEntry(oldEntry, newEntry);
-                if (index.containsKey(newEntry))
+                if (index.contains(newEntry))
                     index.update(newEntry, row);
                 else {
                     index.remove(oldEntry);
@@ -308,6 +328,11 @@ public class Table implements Iterable<Row> {
                 deleteSecondaryIndex(row, columnIndex);
                 row.entries.set(columnIndex, newEntry);
                 insertSecondaryIndex(row, columnIndex);
+            }
+            if(hasComposite) {
+                compositeKeyMap.remove(oldCompositeKey);
+                ArrayList<Entry> entries = row.getEntries();
+                compositeKeyMap.put(getCompositeKey(entries), entries.get(entries.size() - 1));
             }
             int newSize = row.toString().length();
             pages.get(row.getPageID()).updateSize(oldSize, newSize);
