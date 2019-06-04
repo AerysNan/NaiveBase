@@ -1,5 +1,6 @@
 package test;
 
+import connection.Context;
 import global.Global;
 import org.junit.After;
 import org.junit.Before;
@@ -12,15 +13,17 @@ import static org.junit.Assert.assertTrue;
 
 
 public class TableTest {
-    private Session session;
+    private Manager manager;
+    private Context context;
 
     @Before
     public void before() {
-        session = new Session();
+        manager = new Manager();
         Global.maxPageNum = 8;
         Global.maxPageSize = 128;
-        session.createDatabase("test");
-        session.switchDatabase("test");
+        context = new Context(Global.adminUserName, Global.adminDatabaseName);
+        manager.createDatabase("test", context);
+        manager.switchDatabase("test", context);
     }
 
     @Test
@@ -30,13 +33,15 @@ public class TableTest {
         Column col2 = new Column("second", ColumnType.INT, 2, false, -1);
         Column col3 = new Column("score", ColumnType.DOUBLE, 0, false, -1);
         Column[] columns = new Column[]{col1, col2, col3};
-        session.createTable("test_composite", columns);
+        manager.createTable("test_composite", columns, context);
         for (int i = 0; i < testNum; i++)
             for (int j = 0; j < testNum; j++)
-                session.insert("test_composite", new String[]{String.valueOf(i), String.valueOf(j), String.valueOf((double) (i * j))}, null);
-        session.quit();
-        session = new Session();
-        session.switchDatabase("test");
+                manager.insert("test_composite", new String[]{
+                        String.valueOf(i), String.valueOf(j), String.valueOf((double) (i * j))
+                }, null, context);
+        manager.quit();
+        manager = new Manager();
+        manager.switchDatabase("test", context);
         for (int i = 0; i < testNum; i++) {
             for (int j = 0; j < testNum; j++) {
                 Entry fst = new Entry(i);
@@ -46,7 +51,7 @@ public class TableTest {
                         new Entry(j),
                         new Entry((double) (i * j))
                 };
-                assertTrue(session.get("test_composite", new Entry[]{fst, snd}).toString().contains(new Row(e, -1).toString()));
+                assertTrue(manager.get("test_composite", new Entry[]{fst, snd}, context).toString().contains(new Row(e, -1).toString()));
             }
         }
     }
@@ -58,12 +63,14 @@ public class TableTest {
         Column col2 = new Column("name", ColumnType.STRING, 0, false, 10);
         Column col3 = new Column("score", ColumnType.DOUBLE, 0, false, -1);
         Column[] columns = new Column[]{col1, col2, col3};
-        session.createTable("test_get", columns);
+        manager.createTable("test_get", columns, context);
         for (int i = 0; i < testNum; i++)
-            session.insert("test_get", new String[]{String.valueOf(i), "'A'", String.valueOf(100 - i)}, null);
-        session.quit();
-        session = new Session();
-        session.switchDatabase("test");
+            manager.insert("test_get", new String[]{
+                    String.valueOf(i), "'A'", String.valueOf(100 - i)
+            }, null, context);
+        manager.quit();
+        manager = new Manager();
+        manager.switchDatabase("test", context);
         for (int i = 0; i < testNum; i++) {
             Entry key = new Entry(i);
             Entry[] e = new Entry[]{
@@ -71,13 +78,13 @@ public class TableTest {
                     new Entry("A"),
                     new Entry((double) (100 - i))
             };
-            assertEquals(new Row(e, -1).toString(), session.get("test_get", new Entry[]{key}).toString());
+            assertEquals(new Row(e, -1).toString(), manager.get("test_get", new Entry[]{key}, context).toString());
         }
     }
 
     @After
     public void after() {
-        session.deleteDatabaseIfExist("test");
-        session.quit();
+        manager.deleteDatabaseIfExist("test", context);
+        manager.quit();
     }
 }
