@@ -1,5 +1,6 @@
 package schema;
 
+import connection.Context;
 import exception.*;
 import format.Cell;
 import format.PrintFormat;
@@ -7,82 +8,115 @@ import query.*;
 import type.ColumnType;
 import type.ComparatorType;
 import type.ComparerType;
+import type.LogicalOpType;
 
 import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static global.Global.*;
 
-public class Session {
+public class Manager {
+    public static ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     private HashMap<String, Database> databases;
-    private String current;
-    private String user;
     private boolean skipCheck;
+    private HashSet<String> users;
 
-    public Session() {
+    public Manager() {
         this.skipCheck = true;
-        this.user = adminUserName;
         this.databases = new HashMap<>();
+        this.users = new HashSet<>();
         recoverDatabases();
-        createDatabaseIfNotExists(adminDatabaseName);
-        this.current = adminDatabaseName;
+        Context adminContext = new Context(adminUserName, adminDatabaseName);
+        createDatabaseIfNotExists(adminDatabaseName, adminContext);
         dirInit();
-        if (!databases.get(current).tables.containsKey(authTableName)) {
+        if (!databases.get(adminDatabaseName).tables.containsKey(authTableName)) {
             createTable(authTableName,
-                    new Column[] { new Column("authority", ColumnType.INT, 0, true, -1),
+                    new Column[]{
+                            new Column("authority", ColumnType.INT, 0, true, -1),
                             new Column("username", ColumnType.STRING, 2, true, maxNameLength),
                             new Column("database_name", ColumnType.STRING, 2, true, maxNameLength),
-                            new Column("table_name", ColumnType.STRING, 2, true, maxNameLength) });
+                            new Column("table_name", ColumnType.STRING, 2, true, maxNameLength)
+                    },
+                    adminContext
+            );
         }
-        if (!databases.get(current).tables.containsKey(userTableName)) {
-            createTable(userTableName, new Column[] { new Column("username", ColumnType.STRING, 1, true, maxNameLength),
-                    new Column("password", ColumnType.STRING, 0, true, maxNameLength) });
-            createUser(adminUserName, getAdminPassword());
+        if (!databases.get(adminDatabaseName).tables.containsKey(userTableName)) {
+            createTable(userTableName,
+                    new Column[]{
+                            new Column("username", ColumnType.STRING, 1, true, maxNameLength),
+                            new Column("password", ColumnType.STRING, 0, true, maxNameLength)
+                    },
+                    adminContext
+            );
+            createUser(adminUserName, getAdminPassword(), new Context(adminUserName, adminDatabaseName));
         }
         skipCheck = false;
     }
 
-    public void addAuth(String username, String tableName, int level) {
+    public void addAuth(String username, String tableName, int level, Context context) {
         if (username.equals(adminUserName))
             return;
-        Database database = databases.get(current);
+        Database database = databases.get(context.databaseName);
         if (!database.tables.containsKey(tableName))
             throw new RelationNotExistsException(tableName);
-        String currentStash = current;
-        current = adminDatabaseName;
         Table t = databases.get(adminDatabaseName).tables.get(userTableName);
-        if (!t.contains(new Entry[] { new Entry(username) }))
+        if (!t.contains(new Entry[]{new Entry(username)}))
             throw new UserNotExistException(username);
-        int currentAuth = getAuth(username, currentStash, tableName);
+        int currentAuth = getAuth(username, context.databaseName, tableName);
+        String databaseName = context.databaseName;
+        context.databaseName = adminDatabaseName;
         if (currentAuth < 0)
-            insert(authTableName, new String[] { String.valueOf(level), toLiteral(username), toLiteral(currentStash),
-                    toLiteral(tableName) }, null);
-        else
+            insert(authTableName, new String[]{String.valueOf(level), toLiteral(username), toLiteral(databaseName),
+                    toLiteral(tableName)}, null, context);
+        else {
+            Logic logic = new Logic(
+                    new Logic(new Condition(
+                            new Expression(new Comparer(ComparerType.COLUMN, "username")),
+                            new Expression(new Comparer(ComparerType.STRING, username)),
+                            ComparatorType.EQ
+                    )
+                    ),
+                    new Logic(
+                            new Logic(new Condition(
+                                    new Expression(new Comparer(ComparerType.COLUMN, "database_name")),
+                                    new Expression(new Comparer(ComparerType.STRING, databaseName)),
+                                    ComparatorType.EQ
+                            )),
+                            new Logic(new Condition(
+                                    new Expression(new Comparer(ComparerType.COLUMN, "table_name")),
+                                    new Expression(new Comparer(ComparerType.STRING, tableName)),
+                                    ComparatorType.EQ
+                            )),
+                            LogicalOpType.AND
+                    ),
+                    LogicalOpType.AND
+            );
             update(authTableName, "authority",
-                    new Expression(new Comparer(ComparerType.NUMBER, String.valueOf(level | currentAuth))), null);
-        current = currentStash;
+                    new Expression(new Comparer(ComparerType.NUMBER, String.valueOf(level | currentAuth))), logic, context);
+        }
+        context.databaseName = databaseName;
     }
 
-    public void removeAuth(String username, String tableName, int level) {
+    public void removeAuth(String username, String tableName, int level, Context context) {
         if (username.equals(adminUserName))
             return;
-        Database database = databases.get(current);
+        Database database = databases.get(context.databaseName);
         if (!database.tables.containsKey(tableName))
             throw new RelationNotExistsException(tableName);
-        String currentStash = current;
-        current = adminDatabaseName;
         Table t = databases.get(adminDatabaseName).tables.get(userTableName);
-        if (!t.contains(new Entry[] { new Entry(username) }))
+        if (!t.contains(new Entry[]{new Entry(username)}))
             throw new UserNotExistException(username);
-        int currentAuth = getAuth(username, currentStash, tableName);
-        if (currentAuth == 0)
-            return;
-        else
+        int currentAuth = getAuth(username, context.databaseName, tableName);
+        String databaseName = context.databaseName;
+        context.databaseName = adminDatabaseName;
+        if (currentAuth != 0)
             update(authTableName, "authority",
-                    new Expression(new Comparer(ComparerType.NUMBER, String.valueOf(~level & currentAuth))), null);
-        current = currentStash;
+                    new Expression(new Comparer(ComparerType.NUMBER, String.valueOf(~level & currentAuth))), null, context);
+        context.databaseName = databaseName;
     }
 
     private int getAuth(String username, String databaseName, String tableName) {
@@ -96,19 +130,19 @@ public class Session {
         }
     }
 
-    public void createUser(String username, String password) {
+    public void createUser(String username, String password, Context context) {
         if (!skipCheck && username.equals(adminUserName))
             throw new ReservedNameException(username);
         Table t = databases.get(adminDatabaseName).tables.get(userTableName);
         if (t.contains(new Entry[]{new Entry(username)}))
-            throw new UserAlreadyExistsException(user);
-        String currentStash = current;
-        current = adminDatabaseName;
-        insert(userTableName, new String[]{toLiteral(username), toLiteral(encrypt(password))}, null);
-        current = currentStash;
+            throw new UserAlreadyExistsException(username);
+        String databaseName = context.databaseName;
+        context.databaseName = adminDatabaseName;
+        insert(userTableName, new String[]{toLiteral(username), toLiteral(encrypt(password))}, null, context);
+        context.databaseName = databaseName;
     }
 
-    public void dropUser(String username, boolean exists) {
+    public void dropUser(String username, boolean exists, Context context) {
         Table t = databases.get(adminDatabaseName).tables.get(userTableName);
         if (!t.contains(new Entry[] { new Entry(username) })) {
             if (exists)
@@ -116,26 +150,32 @@ public class Session {
             else
                 return;
         }
-        String currentStash = current;
-        current = adminDatabaseName;
+        String databaseName = context.databaseName;
+        context.databaseName = adminDatabaseName;
         delete(userTableName, new Logic(new Condition(new Expression(new Comparer(ComparerType.COLUMN, "username")),
-                new Expression(new Comparer(ComparerType.STRING, username)), ComparatorType.EQ)));
+                new Expression(new Comparer(ComparerType.STRING, username)), ComparatorType.EQ)), context);
         delete(authTableName, new Logic(new Condition(new Expression(new Comparer(ComparerType.COLUMN, "username")),
-                new Expression(new Comparer(ComparerType.STRING, username)), ComparatorType.EQ)));
-        current = currentStash;
+                new Expression(new Comparer(ComparerType.STRING, username)), ComparatorType.EQ)), context);
+        context.databaseName = databaseName;
     }
 
-    public boolean login(String username, String password) {
+    public void logout(String username) {
+        users.remove(username);
+    }
+
+    public void login(String username, String password) {
+        if (users.contains(username))
+            throw new UserAlreadyLoggedInException(username);
         Database database = databases.get(adminDatabaseName);
         try {
-            Row row = database.tables.get(userTableName).get(new Entry[] { new Entry(username) });
+            Row row = database.tables.get(userTableName).get(new Entry[]{new Entry(username)});
             if (row.getEntries().get(1).value.equals(password)) {
-                user = username;
-                return true;
+                users.add(username);
+                return;
             }
-            return false;
+            throw new WrongUserOrPasswordException();
         } catch (Exception e) {
-            return false;
+            throw new WrongUserOrPasswordException();
         }
     }
 
@@ -154,24 +194,24 @@ public class Session {
         }
     }
 
-    private void createDatabaseIfNotExists(String name) {
-        if (!user.equals(adminUserName))
+    private void createDatabaseIfNotExists(String name, Context context) {
+        if (!context.username.equals(adminUserName))
             throw new NoAuthorityException();
         if (!skipCheck && name.equals(authTableName))
             throw new ReservedNameException(name);
         if (databases.containsKey(name))
             return;
-        createDatabase(name);
+        createDatabase(name, context);
     }
 
-    public void switchDatabase(String name) {
-        if (!databases.containsKey(name))
-            throw new DatabaseNotExistsException(name);
-        current = name;
+    public void switchDatabase(String databaseName, Context context) {
+        if (!databases.containsKey(databaseName))
+            throw new DatabaseNotExistsException(databaseName);
+        context.databaseName = databaseName;
     }
 
-    public void createDatabase(String name) {
-        if (!user.equals(adminUserName))
+    public void createDatabase(String name, Context context) {
+        if (!context.username.equals(adminUserName))
             throw new NoAuthorityException();
         if (!skipCheck && name.equals(adminDatabaseName))
             throw new ReservedNameException(name);
@@ -190,14 +230,14 @@ public class Session {
             mPath.mkdir();
     }
 
-    public void deleteDatabaseIfExist(String name) {
+    public void deleteDatabaseIfExist(String name, Context context) {
         if (!databases.containsKey(name))
             return;
-        deleteDatabase(name);
+        deleteDatabase(name, context);
     }
 
-    public void deleteDatabase(String name) {
-        if (!user.equals(adminUserName))
+    public void deleteDatabase(String name, Context context) {
+        if (!context.username.equals(adminUserName))
             throw new NoAuthorityException();
         if (!databases.containsKey(name))
             throw new DatabaseNotExistsException(name);
@@ -205,19 +245,20 @@ public class Session {
         databases.remove(name);
     }
 
-    public void deleteTableIfExist(String tableName) {
-        if (!databases.get(current).tables.containsKey(tableName))
+    public void deleteTableIfExist(String tableName, Context context) {
+        if (!databases.get(context.databaseName).tables.containsKey(tableName))
             return;
-        deleteTable(tableName);
+        deleteTable(tableName, context);
     }
 
-    public void deleteTable(String tableName) {
-        if (!authorized(current, tableName, AUTH_DROP))
+    public void deleteTable(String tableName, Context context) {
+        if (!authorized(tableName, AUTH_DROP, context))
             throw new NoAuthorityException();
-        if (!databases.get(current).tables.containsKey(tableName))
+        Database database = databases.get(context.databaseName);
+        if (!database.tables.containsKey(tableName))
             throw new RelationNotExistsException(tableName);
-        databases.get(current).deleteTable(tableName);
-        databases.get(current).tables.remove(tableName);
+        database.deleteTable(tableName);
+        database.tables.remove(tableName);
     }
 
     private void persistDatabases() {
@@ -236,25 +277,25 @@ public class Session {
 
     }
 
-    public void createView(String viewName, String[] columnsProjected, QueryTable[] queryTables, Logic selectLogic) {
-        databases.get(current).createView(viewName, columnsProjected, queryTables, selectLogic);
+    public void createView(String viewName, String[] columnsProjected, QueryTable[] queryTables, Logic selectLogic, Context context) {
+        databases.get(context.databaseName).createView(viewName, columnsProjected, queryTables, selectLogic);
     }
 
-    public void dropView(String viewName, boolean exists) {
-        databases.get(current).dropView(viewName, exists);
+    public void dropView(String viewName, boolean exists, Context context) {
+        databases.get(context.databaseName).dropView(viewName, exists);
     }
 
-    public void insert(String tableName, String[] values, String[] columnNames) {
-        if (!authorized(current, tableName, AUTH_INSERT))
+    public void insert(String tableName, String[] values, String[] columnNames, Context context) {
+        if (!authorized(tableName, AUTH_INSERT, context))
             throw new NoAuthorityException();
-        Database database = databases.get(current);
+        Database database = databases.get(context.databaseName);
         if (!database.tables.containsKey(tableName))
             throw new RelationNotExistsException(tableName);
         database.tables.get(tableName).insert(values, columnNames);
     }
 
-    public Row get(String tableName, Entry[] entries) {
-        Database database = databases.get(current);
+    public Row get(String tableName, Entry[] entries, Context context) {
+        Database database = databases.get(context.databaseName);
         if (!database.tables.containsKey(tableName))
             throw new RelationNotExistsException(tableName);
         return database.tables.get(tableName).get(entries);
@@ -302,44 +343,44 @@ public class Session {
                 + body.size() + (body.size() == 1 ? " row" : " rows") + " in set.";
     }
 
-    public String select(String[] columnsProjected, QueryTable[] queryTables, Logic selectLogic, boolean distinct) {
+    public String select(String[] columnsProjected, QueryTable[] queryTables, Logic selectLogic, boolean distinct, Context context) {
         for (QueryTable queryTable : queryTables) {
             if (queryTable instanceof SimpleTable) {
-                if (!authorized(current, ((SimpleTable) queryTable).getTable().tableName, AUTH_SELECT))
+                if (!authorized(((SimpleTable) queryTable).getTable().tableName, AUTH_SELECT, context))
                     throw new NoAuthorityException();
             } else if (queryTable instanceof JointTable) {
                 for (Table t : ((JointTable) queryTable).getTables())
-                    if (!authorized(current, t.tableName, AUTH_SELECT))
+                    if (!authorized(t.tableName, AUTH_SELECT, context))
                         throw new NoAuthorityException();
             }
         }
-        return databases.get(current).select(columnsProjected, queryTables, selectLogic, distinct);
+        return databases.get(context.databaseName).select(columnsProjected, queryTables, selectLogic, distinct);
     }
 
-    public String delete(String tableName, Logic logic) {
-        if (!authorized(current, tableName, AUTH_DELETE))
+    public String delete(String tableName, Logic logic, Context context) {
+        if (!authorized(tableName, AUTH_DELETE, context))
             throw new NoAuthorityException();
-        Database database = databases.get(current);
+        Database database = databases.get(context.databaseName);
         if (!database.tables.containsKey(tableName))
             throw new RelationNotExistsException(tableName);
         return database.tables.get(tableName).delete(logic);
     }
 
-    public String update(String tableName, String columnName, Expression expression, Logic logic) {
-        if (!authorized(current, tableName, AUTH_UPDATE))
+    public String update(String tableName, String columnName, Expression expression, Logic logic, Context context) {
+        if (!authorized(tableName, AUTH_UPDATE, context))
             throw new NoAuthorityException();
-        Database database = databases.get(current);
+        Database database = databases.get(context.databaseName);
         if (!database.tables.containsKey(tableName))
             throw new RelationNotExistsException(tableName);
         return database.tables.get(tableName).update(columnName, expression, logic);
     }
 
-    private boolean authorized(String databaseName, String tableName, int level) {
-        if (user.equals(adminUserName))
+    private boolean authorized(String tableName, int level, Context context) {
+        if (context.username.equals(adminUserName))
             return true;
         Table t = databases.get(adminDatabaseName).tables.get(authTableName);
         try {
-            Row row = t.get(new Entry[] { null, new Entry(user), new Entry(databaseName), new Entry(tableName) });
+            Row row = t.get(new Entry[]{null, new Entry(context.username), new Entry(context.databaseName), new Entry(tableName)});
             ArrayList<Entry> entries = row.getEntries();
             return (((int) entries.get(0).value) & (1 << level)) > 0;
         } catch (Exception e) {
@@ -376,12 +417,12 @@ public class Session {
         }
     }
 
-    public void createTable(String tableName, Column[] columns) {
-        if (!skipCheck && current.equals(adminDatabaseName))
+    public void createTable(String tableName, Column[] columns, Context context) {
+        if (!skipCheck && context.databaseName.equals(adminDatabaseName))
             if (tableName.equals(authTableName) || tableName.equals(userTableName))
                 throw new ReservedNameException(tableName);
-        databases.get(current).createTable(tableName, columns);
-        addAuth(user, tableName, AUTH_MAX);
+        databases.get(context.databaseName).createTable(tableName, columns);
+        addAuth(context.username, tableName, AUTH_MAX, context);
     }
 
     public Database getDatabase(String name) {
@@ -396,8 +437,8 @@ public class Session {
             d.quit();
     }
 
-    public QueryTable getSingleJointTable(String tableName) {
-        Database database = databases.get(current);
+    public QueryTable getSingleJointTable(String tableName, Context context) {
+        Database database = databases.get(context.databaseName);
         if (database.tables.containsKey(tableName))
             return new SimpleTable(database.tables.get(tableName));
         if (database.views.containsKey(tableName))
@@ -405,8 +446,8 @@ public class Session {
         throw new RelationNotExistsException(tableName);
     }
 
-    public QueryTable getMultipleJointTable(ArrayList<String> tableNames, Logic logic) {
-        Database database = databases.get(current);
+    public QueryTable getMultipleJointTable(ArrayList<String> tableNames, Logic logic, Context context) {
+        Database database = databases.get(context.databaseName);
         ArrayList<Table> tables = new ArrayList<>();
         for (String tableName : tableNames) {
             if (!database.tables.containsKey(tableName))

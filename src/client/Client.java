@@ -7,6 +7,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Scanner;
 
+import org.apache.commons.cli.*;
+
 public class Client {
     private static ServerSocket serverSocket;
     private static Socket readSocket;
@@ -14,24 +16,25 @@ public class Client {
     private static BufferedReader reader;
     private static BufferedWriter writer;
 
-    private Client(String ip, int port) throws IOException {
-        writeSocket = new Socket(ip, port);
+    private Client(String ip, int writePort, int readPort) throws IOException {
+        writeSocket = new Socket(ip, writePort);
         writer = new BufferedWriter(new OutputStreamWriter(writeSocket.getOutputStream()));
-        write("localhost 8081");
-        serverSocket = new ServerSocket(8081);
+        write("localhost " + readPort);
+        serverSocket = new ServerSocket(readPort);
         readSocket = serverSocket.accept();
         reader = new BufferedReader(new InputStreamReader(readSocket.getInputStream()));
         System.out.println("Successfully connected to server!");
         Scanner sc = new Scanner(System.in);
-        System.out.println("username: ");
+        System.out.print("Username: ");
         String username = sc.nextLine();
-        System.out.println("password: ");
+        System.out.print("Password: ");
         String password = Global.encrypt(sc.nextLine());
         write(username + " " + password);
-        if (read().startsWith("OK"))
-            System.out.println("Successfully logged in!");
+        String response = read();
+        if (response.startsWith("OK"))
+            System.out.println("Logged in succeeded!");
         else {
-            System.out.println("Invalid username or password!");
+            System.out.println(response.trim());
             clean();
             System.exit(0);
         }
@@ -98,8 +101,45 @@ public class Client {
     }
 
     public static void main(String[] args) {
+        Options options = new Options();
+        options.addOption(Option.builder("s")
+                .argName("ADDRESS")
+                .longOpt("server")
+                .desc("server listen address")
+                .hasArg()
+                .required(false)
+                .build()
+        );
+        options.addOption(Option.builder("p")
+                .argName("PORT")
+                .longOpt("port")
+                .desc("client read port")
+                .hasArg()
+                .required()
+                .build()
+        );
+        options.addOption(Option.builder("h")
+                .longOpt("help")
+                .desc("print help information")
+                .hasArg(false)
+                .build()
+        );
+        CommandLineParser parser = new DefaultParser();
+        CommandLine cmd = null;
         try {
-            new Client("localhost", 8080);
+            cmd = parser.parse(options, args);
+        } catch (ParseException e) {
+            System.err.println("Invalid command line argument!");
+            System.exit(-1);
+        }
+        if (cmd.hasOption("h")) {
+            HelpFormatter helpFormatter = new HelpFormatter();
+            helpFormatter.printHelp("java -jar client.jar", "", options, "");
+            return;
+        }
+        try {
+            String[] config = cmd.getOptionValue("s", "localhost:8080").split(":");
+            new Client(config[0], Integer.parseInt(config[1]), Integer.parseInt(cmd.getOptionValue('p')));
         } catch (IOException e) {
             System.err.println("Failed to start client! Error message: " + e.getMessage());
             System.exit(-1);
