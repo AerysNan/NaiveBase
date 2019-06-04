@@ -37,11 +37,11 @@ public class Table implements Iterable<Row> {
         this.tableName = tableName;
         this.columns = new ArrayList<>(Arrays.asList(columns));
         this.compositeKeyMap = new HashMap<>();
-        this.uid = columns[columns.length - 1].name.equals("uid") ? 0 : -1;
+        this.uid = columns[columns.length - 1].name.equals(uniqueIDName) ? 0 : -1;
         for (Column c : columns) {
             if (c.primary == 2)
                 hasComposite = true;
-            if (c.name.equals("uid"))
+            if (c.name.equals(uniqueIDName))
                 hasUID = true;
         }
         this.index = new BPlusTree<>();

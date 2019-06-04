@@ -1,5 +1,5 @@
 import parser.Evaluator;
-import schema.Manager;
+import schema.Session;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -12,13 +12,13 @@ public class Server {
     private static Socket readSocket;
     private static Socket writeSocket;
     private static Evaluator evaluator;
-    private static Manager manager;
+    private static Session session;
 
     private Server(int port) throws IOException {
         serverSocket = new ServerSocket(port);
         try {
-            manager = new Manager();
-            evaluator = new Evaluator(manager);
+            session = new Session();
+            evaluator = new Evaluator(session);
         } catch (Exception e) {
             System.err.println("Failed to start evaluator! Error message: " + e.getMessage());
             System.exit(-1);
@@ -36,7 +36,7 @@ public class Server {
         System.out.println("Connection built successfully!");
         message = read();
         data = message.split(" ");
-        if (manager.login(data[0], data[1])) {
+        if (session.login(data[0], data[1])) {
             System.out.println("Login successfully!");
             write("OK");
             return true;

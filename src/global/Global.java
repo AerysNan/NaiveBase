@@ -20,6 +20,7 @@ public class Global {
     public static final String adminUserName = "admin";
     public static final String userTableName = "users";
     public static final String adminPassWordFileName = "admin.conf";
+    public static final String uniqueIDName = "uid";
     public static int maxNameLength = 40;
     public static int maxPageNum = 256;
     public static int maxPageSize = 4096;

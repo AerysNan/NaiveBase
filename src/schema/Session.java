@@ -15,12 +15,14 @@ import java.util.List;
 
 import static global.Global.*;
 
-public class Manager {
+public class Session {
     private HashMap<String, Database> databases;
     private String current;
     private String user;
+    private boolean skipCheck;
 
-    public Manager() {
+    public Session() {
+        this.skipCheck = true;
         this.user = adminUserName;
         this.databases = new HashMap<>();
         recoverDatabases();
@@ -39,6 +41,7 @@ public class Manager {
                     new Column("password", ColumnType.STRING, 0, true, maxNameLength) });
             createUser(adminUserName, getAdminPassword());
         }
+        skipCheck = false;
     }
 
     public void addAuth(String username, String tableName, int level) {
@@ -94,12 +97,14 @@ public class Manager {
     }
 
     public void createUser(String username, String password) {
+        if (!skipCheck && username.equals(adminUserName))
+            throw new ReservedNameException(username);
         Table t = databases.get(adminDatabaseName).tables.get(userTableName);
-        if (t.contains(new Entry[] { new Entry(username) }))
+        if (t.contains(new Entry[]{new Entry(username)}))
             throw new UserAlreadyExistsException(user);
         String currentStash = current;
         current = adminDatabaseName;
-        insert(userTableName, new String[] { toLiteral(username), toLiteral(encrypt(password)) }, null);
+        insert(userTableName, new String[]{toLiteral(username), toLiteral(encrypt(password))}, null);
         current = currentStash;
     }
 
@@ -107,7 +112,7 @@ public class Manager {
         Table t = databases.get(adminDatabaseName).tables.get(userTableName);
         if (!t.contains(new Entry[] { new Entry(username) })) {
             if (exists)
-                throw new UserNotExistException(user);
+                throw new UserNotExistException(username);
             else
                 return;
         }
@@ -152,6 +157,8 @@ public class Manager {
     private void createDatabaseIfNotExists(String name) {
         if (!user.equals(adminUserName))
             throw new NoAuthorityException();
+        if (!skipCheck && name.equals(authTableName))
+            throw new ReservedNameException(name);
         if (databases.containsKey(name))
             return;
         createDatabase(name);
@@ -166,6 +173,8 @@ public class Manager {
     public void createDatabase(String name) {
         if (!user.equals(adminUserName))
             throw new NoAuthorityException();
+        if (!skipCheck && name.equals(adminDatabaseName))
+            throw new ReservedNameException(name);
         if (databases.containsKey(name))
             throw new DatabaseAlreadyExistsException(name);
         Database database = new Database(name);
@@ -362,6 +371,9 @@ public class Manager {
     }
 
     public void createTable(String tableName, Column[] columns) {
+        if (!skipCheck && current.equals(adminDatabaseName))
+            if (tableName.equals(authTableName) || tableName.equals(userTableName))
+                throw new ReservedNameException(tableName);
         databases.get(current).createTable(tableName, columns);
         addAuth(user, tableName, AUTH_MAX);
     }
