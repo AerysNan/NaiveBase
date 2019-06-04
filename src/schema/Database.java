@@ -15,10 +15,12 @@ import static global.Global.*;
 public class Database {
     private String dataBaseName;
     HashMap<String, Table> tables;
+    HashMap<String, View> views;
 
     public Database(String name) {
         this.dataBaseName = name;
         this.tables = new HashMap<>();
+        this.views = new HashMap<>();
         recoverDatabase();
     }
 
@@ -55,7 +57,7 @@ public class Database {
 
     public void createTable(String tableName, Column[] columns) {
         if (tables.containsKey(tableName))
-            throw new TableAlreadyExistsException(tableName);
+            throw new TableNameCollisionException(tableName);
         int hasPrimary = 0;
         HashSet<String> nameSet = new HashSet<>();
         for (Column c : columns) {
@@ -99,6 +101,66 @@ public class Database {
         tables.get(name).deleteAllPage();
     }
 
+    void createView(String viewName, String[] columnsProjected, QueryTable[] queryTables, Logic selectLogic) {
+        if (tables.containsKey(viewName) || views.containsKey(viewName))
+            throw new ViewNameCollisionException(viewName);
+        QueryResult queryResult = new QueryResult(queryTables, columnsProjected);
+        for (QueryTable queryTable : queryTables)
+            queryTable.setSelectLogic(selectLogic);
+        View view = buildView(queryTables, queryResult);
+        views.put(viewName, view);
+    }
+
+
+    void dropView(String viewName, boolean exists) {
+        if (!views.containsKey(viewName)) {
+            if (exists)
+                throw new ViewNotExistsException(viewName);
+            return;
+        }
+        views.remove(viewName);
+    }
+
+    private View buildView(QueryTable[] queryTables, QueryResult queryResult) {
+        ArrayList<Column> columns = new ArrayList<>();
+        for (QueryTable queryTable : queryTables)
+            columns.addAll(queryTable.columns);
+        View view = new View(columns);
+        LinkedList<Row> currentRows = new LinkedList<>();
+        while (true) {
+            if (currentRows.isEmpty()) {
+                for (QueryTable queryTable : queryTables) {
+                    if (!queryTable.hasNext()) {
+                        view.reduceColumns(queryResult.index);
+                        return view;
+                    }
+                    currentRows.push(queryTable.next());
+                }
+                Row row = queryResult.generateQueryRecord(QueryResult.combineRow(currentRows));
+                view.insert(row);
+            } else {
+                int index;
+                for (index = queryTables.length - 1; index >= 0; index--) {
+                    currentRows.pop();
+                    if (!queryTables[index].hasNext())
+                        queryTables[index].reset();
+                    else break;
+                }
+                if (index < 0)
+                    break;
+                for (int i = index; i < queryTables.length; i++) {
+                    if (!queryTables[i].hasNext())
+                        break;
+                    currentRows.push(queryTables[i].next());
+                }
+                Row row = queryResult.generateQueryRecord(QueryResult.combineRow(currentRows));
+                view.insert(row);
+            }
+        }
+        view.reduceColumns(queryResult.index);
+        return view;
+    }
+
     private String buildCartesianProduct(QueryTable[] queryTables, QueryResult queryResult, boolean distinct) {
         int count = 0;
         HashSet<String> hashSet = new HashSet<>();
@@ -117,15 +179,13 @@ public class Database {
                         return "Empty set.";
                 }
                 Row row = queryResult.generateQueryRecord(QueryResult.combineRow(currentRows));
-                for (Entry entry : row.getEntries()) {
+                for (Entry entry : row.getEntries())
                     line.add(new Cell(String.valueOf(entry.value)));
-                }
                 if (!distinct || !hashSet.contains(row.toString())) {
                     body.add(line);
                     count++;
                     if (distinct)
                         hashSet.add(row.toString());
-
                 }
             } else {
                 int index;
@@ -239,7 +299,7 @@ public class Database {
 
     public Table getTable(String name) {
         if (!tables.containsKey(name))
-            throw new TableNotExistsException(name);
+            throw new RelationNotExistsException(name);
         return tables.get(name);
     }
 

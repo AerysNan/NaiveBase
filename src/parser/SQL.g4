@@ -16,6 +16,8 @@ sql_stmt :
     | drop_table_stmt
     | insert_stmt
     | select_stmt
+    | create_view_stmt
+    | drop_view_stmt
     | grant_stmt
     | revoke_stmt
     | use_db_stmt
@@ -74,6 +76,12 @@ value_entry :
 select_stmt :
     K_SELECT ( K_DISTINCT | K_ALL )? result_column ( ',' result_column )*
         K_FROM table_query ( ',' table_query )* ( K_WHERE multiple_condition )? ;
+
+create_view_stmt :
+    K_CREATE K_VIEW view_name K_AS select_stmt ;
+
+drop_view_stmt :
+    K_DROP K_VIEW ( K_IF K_EXISTS )? view_name ;
 
 update_stmt :
     K_UPDATE table_name
@@ -149,6 +157,9 @@ user_name :
 column_name :
     IDENTIFIER ;
 
+view_name :
+    IDENTIFIER;
+
 password :
     STRING_LITERAL ;
 
@@ -175,6 +186,7 @@ T_STRING : S T R I N G;
 
 K_ADD : A D D;
 K_ALL : A L L;
+K_AS : A S;
 K_BY : B Y;
 K_COLUMN : C O L U M N;
 K_CREATE : C R E A T E;
@@ -207,6 +219,7 @@ K_UPDATE : U P D A T E;
 K_USE : U S E;
 K_USER : U S E R;
 K_VALUES : V A L U E S;
+K_VIEW : V I E W;
 K_WHERE : W H E R E;
 
 IDENTIFIER :

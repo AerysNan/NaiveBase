@@ -67,7 +67,7 @@ public class Table implements Iterable<Row> {
             throw new InternalException("failed to get table data files.");
         if (files.length == 0)
             return;
-        int maxPage = Integer.MIN_VALUE;
+        int maxPage = 0;
         int columnSize = columns.size();
         for (File f : files) {
             String databaseName = f.getName().split("-")[0];
@@ -80,13 +80,15 @@ public class Table implements Iterable<Row> {
             } catch (Exception e) {
                 throw new InternalException("failed to open table data file.");
             }
+            if (rows.isEmpty())
+                return;
             int pageID = rows.get(0).getPageID();
             Page page = new Page(databaseName, tableName, pageID);
             for (Row row : rows) {
                 ArrayList<Entry> entries = row.getEntries();
                 for (int i = 0; i < columnSize; i++) {
                     Entry entry = entries.get(i);
-                    if (columns.get(i).primary == 1) {
+                    if (i == primaryIndex) {
                         index.put(entry, pages.size() < maxPageNum ? row : new Row(row.getPageID()));
                         page.addRow(row.getEntries().get(i), row.toString().length());
                         maxPage = maxPage < pageID ? pageID : maxPage;
@@ -97,7 +99,6 @@ public class Table implements Iterable<Row> {
                     uid = Math.max(uid, (Long) (entries.get(columnSize - 1).value));
                 if (hasComposite)
                     compositeKeyMap.put(getCompositeKey(entries), entries.get(columnSize - 1));
-
             }
             if (pages.size() < maxPageNum)
                 addPage(page);
@@ -256,10 +257,12 @@ public class Table implements Iterable<Row> {
                 continue;
             count++;
             Entry key = row.getEntries().get(primaryIndex);
-            pages.get(row.getPageID()).deleteRow(key, row.toString().length());
+            Page page = pages.get(row.getPageID());
+            page.deleteRow(key, row.toString().length());
+            page.setDirty();
             index.remove(key);
             for (int i = 0; i < columns.size(); i++) {
-                if (columns.get(i).primary == 1)
+                if (i == primaryIndex)
                     continue;
                 deleteSecondaryIndex(row, i);
             }
@@ -309,12 +312,13 @@ public class Table implements Iterable<Row> {
             CompositeKey oldCompositeKey = null;
             if(hasComposite)
                 oldCompositeKey = getCompositeKey(row.getEntries());
+            Page page = pages.get(row.getPageID());
             if (column.primary == 1) {
                 for (int i = 0; i < columns.size(); i++)
                     if (i != primaryIndex)
                         deleteSecondaryIndex(row, i);
                 row.entries.set(columnIndex, newEntry);
-                pages.get(row.getPageID()).updatePrimaryEntry(oldEntry, newEntry);
+                page.updatePrimaryEntry(oldEntry, newEntry);
                 if (index.contains(newEntry))
                     index.update(newEntry, row);
                 else {
@@ -329,6 +333,7 @@ public class Table implements Iterable<Row> {
                 row.entries.set(columnIndex, newEntry);
                 insertSecondaryIndex(row, columnIndex);
             }
+            page.setDirty();
             if(hasComposite) {
                 compositeKeyMap.remove(oldCompositeKey);
                 ArrayList<Entry> entries = row.getEntries();
@@ -449,7 +454,7 @@ public class Table implements Iterable<Row> {
         Page page = new Page(this.databaseName, this.tableName, pageID);
         for (Row row : rows) {
             for (int i = 0; i < columns.size(); i++) {
-                if (columns.get(i).primary == 1) {
+                if (i == primaryIndex) {
                     Entry entry = row.getEntries().get(i);
                     page.addRow(entry, row.toString().length());
                     index.update(entry, row);

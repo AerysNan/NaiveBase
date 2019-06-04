@@ -1,6 +1,7 @@
 package parser;
 
 import exception.ColumnNotFoundException;
+import exception.NotImplementedException;
 import exception.ValueFormatException;
 import global.Global;
 import type.LiteralType;
@@ -49,6 +50,10 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
             return visitDrop_db_stmt(ctx.drop_db_stmt());
         if (ctx.grant_stmt() != null)
             return visitGrant_stmt(ctx.grant_stmt());
+        if (ctx.create_view_stmt() != null)
+            return visitCreate_view_stmt(ctx.create_view_stmt());
+        if (ctx.drop_view_stmt() != null)
+            return visitDrop_view_stmt(ctx.drop_view_stmt());
         if (ctx.revoke_stmt() != null)
             return visitRevoke_stmt(ctx.revoke_stmt());
         if (ctx.delete_stmt() != null)
@@ -120,6 +125,53 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
             return e.getMessage();
         }
         return "Dropped database " + name + ".";
+    }
+
+    @Override
+    public String visitCreate_view_stmt(SQLParser.Create_view_stmtContext ctx) {
+        String viewName = ctx.view_name().getText().toLowerCase();
+        SQLParser.Select_stmtContext subCtx = ctx.select_stmt();
+        if (subCtx.K_DISTINCT() != null)
+            throw new NotImplementedException("distinct");
+        int columnCount = subCtx.result_column().size();
+        String[] columnsProjected = new String[columnCount];
+        for (int i = 0; i < columnCount; i++) {
+            String columnName = subCtx.result_column(i).getText().toLowerCase();
+            if (columnName.equals("*")) {
+                columnsProjected = null;
+                break;
+            }
+            columnsProjected[i] = columnName;
+        }
+        int queryCount = subCtx.table_query().size();
+        QueryTable[] queryTables = new QueryTable[queryCount];
+        try {
+            for (int i = 0; i < queryCount; i++)
+                queryTables[i] = visitTable_query(subCtx.table_query(i));
+        } catch (Exception e) {
+            return e.getMessage();
+        }
+        Logic logic = null;
+        if (subCtx.K_WHERE() != null)
+            logic = visitMultiple_condition(subCtx.multiple_condition());
+        try {
+            session.createView(viewName, columnsProjected, queryTables, logic);
+        } catch (Exception e) {
+            return e.getMessage();
+        }
+        return "Created view " + viewName + ".";
+    }
+
+    @Override
+    public String visitDrop_view_stmt(SQLParser.Drop_view_stmtContext ctx) {
+        String viewName = ctx.view_name().getText().toLowerCase();
+        boolean exists = ctx.K_IF() == null;
+        try {
+            session.dropView(viewName, exists);
+        } catch (Exception e) {
+            return e.getMessage();
+        }
+        return "Dropped view " + viewName + ".";
     }
 
     @Override
