@@ -20,7 +20,13 @@ public abstract class QueryTable implements Iterator<Row> {
 
     public abstract void reset();
 
-    public abstract  ArrayList<MetaInfo> generateMeta();
+    public abstract ArrayList<MetaInfo> generateMeta();
+
+    QueryTable() {
+        this.queue = new LinkedList<>();
+        this.buffer = new LinkedList<>();
+        this.isFirst = true;
+    }
 
     public void setSelectLogic(Logic selectLogic) {
         this.selectLogic = selectLogic;
@@ -28,11 +34,9 @@ public abstract class QueryTable implements Iterator<Row> {
 
     int columnFind(ArrayList<Column> columns, String name) {
         int found = -1;
-        for (int i = 0; i < columns.size(); i++) {
-            if (name.equals(columns.get(i).getName())) {
+        for (int i = 0; i < columns.size(); i++)
+            if (name.equals(columns.get(i).getName()))
                 found = i;
-            }
-        }
         if (found == -1)
             throw new ColumnNotFoundException(name);
         return found;

@@ -54,3 +54,10 @@ create user elder identified by 'naive';
 grant select, update on student to elder;
 grant select, delete on grade to elder;
 grant select, insert on course to elder;
+
+drop view if exists cs_transcript;
+create view cs_transcript as
+    select student_name, course_name, score
+    from student join grade join course
+        on student.student_id = grade.student_id && course.course_id = grade.course_id
+    where student.department_name = 'Computer Science';
