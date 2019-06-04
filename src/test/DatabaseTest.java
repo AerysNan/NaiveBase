@@ -6,7 +6,7 @@ import org.junit.Test;
 import query.*;
 import schema.Column;
 import schema.Database;
-import schema.Manager;
+import schema.Session;
 import schema.Table;
 import type.ColumnType;
 import type.ComparatorType;
@@ -18,7 +18,7 @@ import static org.junit.Assert.assertEquals;
 
 
 public class DatabaseTest {
-    private Manager manager;
+    private Session session;
     private Database database;
     private int testNum;
 
@@ -43,8 +43,8 @@ public class DatabaseTest {
 
     @Before
     public void setUp() {
-        manager = new Manager();
-        database = manager.getDatabase("admin");
+        session = new Session();
+        database = session.getDatabase("admin");
 
         Column col1 = new Column("id", ColumnType.INT, 1, false, -1);
         Column col2 = new Column("name", ColumnType.STRING, 0, false, 10);
@@ -301,6 +301,6 @@ public class DatabaseTest {
     @After
     public void after() {
         database.deleteAllTable();
-        manager.quit();
+        session.quit();
     }
 }

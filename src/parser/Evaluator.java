@@ -3,13 +3,13 @@ package parser;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
-import schema.Manager;
+import schema.Session;
 
 public class Evaluator {
-    private Manager manager;
+    private Session session;
 
-    public Evaluator(Manager manager) {
-        this.manager = manager;
+    public Evaluator(Session session) {
+        this.session = session;
     }
 
     public String evaluate(String expression) {
@@ -22,7 +22,7 @@ public class Evaluator {
         parser.addErrorListener(StrictErrorListener.instance);
         try {
             ParseTree tree = parser.parse();
-            SQLCustomVisitor visitor = new SQLCustomVisitor(manager);
+            SQLCustomVisitor visitor = new SQLCustomVisitor(session);
             return String.valueOf(visitor.visit(tree));
         } catch (Exception e) {
             return "Exception: illegal SQL statement! Error message: " + e.getMessage();

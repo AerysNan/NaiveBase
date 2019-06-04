@@ -4,6 +4,7 @@ import exception.AmbiguousColumnNameException;
 import exception.ColumnNameFormatException;
 import exception.ColumnNotFoundException;
 import exception.TableNotExistsException;
+import global.Global;
 import schema.Entry;
 import schema.Row;
 import format.Cell;
@@ -38,7 +39,7 @@ public class QueryResult {
             int offset = 0;
             for (MetaInfo metaInfo : metaInfoInfos) {
                 for (int i = 0; i < metaInfo.columns.size(); i++) {
-                    if (!"uid".equals(metaInfo.columns.get(i).getName())) {
+                    if (!Global.uniqueIDName.equals(metaInfo.columns.get(i).getName())) {
                         index.add(i + offset);
                         this.attrs.add(new Cell(metaInfo.columns.get(i).getName()));
                     }
