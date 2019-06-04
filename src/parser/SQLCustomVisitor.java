@@ -8,18 +8,18 @@ import javafx.util.Pair;
 import query.*;
 import schema.Column;
 import type.ConstraintType;
-import schema.Manager;
+import schema.Session;
 import type.*;
 
 import java.util.ArrayList;
 import java.util.StringJoiner;
 
 public class SQLCustomVisitor extends SQLBaseVisitor {
-    private Manager manager;
+    private Session session;
 
-    public SQLCustomVisitor(Manager manager) {
+    public SQLCustomVisitor(Session session) {
         super();
-        this.manager = manager;
+        this.session = session;
     }
 
     @Override
@@ -76,7 +76,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     public String visitCreate_db_stmt(SQLParser.Create_db_stmtContext ctx) {
         String databaseName = ctx.database_name().getText();
         try {
-            manager.createDatabase(databaseName.toLowerCase());
+            session.createDatabase(databaseName.toLowerCase());
         } catch (Exception e) {
             return e.getMessage();
         }
@@ -89,7 +89,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
         String password = ctx.password().getText();
         password = password.substring(1, password.length() - 1).toLowerCase();
         try {
-            manager.createUser(username, password);
+            session.createUser(username, password);
         } catch (Exception e) {
             return e.getMessage();
         }
@@ -101,7 +101,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
         String username = ctx.user_name().getText().toLowerCase();
         boolean exists = ctx.K_IF() == null;
         try {
-            manager.dropUser(username, exists);
+            session.dropUser(username, exists);
         } catch (Exception e) {
             return e.getMessage();
         }
@@ -113,9 +113,9 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
         String name = ctx.database_name().getText();
         try {
             if (ctx.K_IF() != null && ctx.K_EXISTS() != null)
-                manager.deleteDatabaseIfExist(name.toLowerCase());
+                session.deleteDatabaseIfExist(name.toLowerCase());
             else
-                manager.deleteDatabase(name.toLowerCase());
+                session.deleteDatabase(name.toLowerCase());
         } catch (Exception e) {
             return e.getMessage();
         }
@@ -133,7 +133,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
         String username = ctx.user_name().getText().toLowerCase();
         String tableName = ctx.table_name().getText().toLowerCase();
         try {
-            manager.addAuth(username, tableName, totalLevel);
+            session.addAuth(username, tableName, totalLevel);
         } catch (Exception e) {
             return e.getMessage();
         }
@@ -151,7 +151,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
         String username = ctx.user_name().getText().toLowerCase();
         String tableName = ctx.table_name().getText().toLowerCase();
         try {
-            manager.removeAuth(username, tableName, totalLevel);
+            session.removeAuth(username, tableName, totalLevel);
         } catch (Exception e) {
             return e.getMessage();
         }
@@ -193,7 +193,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
             }
         }
         try {
-            manager.createTable(name.toLowerCase(), columns);
+            session.createTable(name.toLowerCase(), columns);
         } catch (Exception e) {
             return e.getMessage();
         }
@@ -204,7 +204,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     public String visitUse_db_stmt(SQLParser.Use_db_stmtContext ctx) {
         String name = ctx.database_name().getText();
         try {
-            manager.switchDatabase(name.toLowerCase());
+            session.switchDatabase(name.toLowerCase());
         } catch (Exception e) {
             return e.getMessage();
         }
@@ -216,14 +216,14 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
         String tableName = ctx.table_name().getText().toLowerCase();
         if (ctx.K_WHERE() == null) {
             try {
-                return manager.delete(tableName, null);
+                return session.delete(tableName, null);
             } catch (Exception e) {
                 return e.getMessage();
             }
         }
         Logic logic = visitMultiple_condition(ctx.multiple_condition());
         try {
-            return manager.delete(tableName, logic);
+            return session.delete(tableName, logic);
         } catch (Exception e) {
             return e.getMessage();
         }
@@ -234,9 +234,9 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
         String name = ctx.table_name().getText();
         try {
             if (ctx.K_IF() != null && ctx.K_EXISTS() != null)
-                manager.deleteTableIfExist(name.toLowerCase());
+                session.deleteTableIfExist(name.toLowerCase());
             else
-                manager.deleteTable(name.toLowerCase());
+                session.deleteTable(name.toLowerCase());
         } catch (Exception e) {
             return e.getMessage();
         }
@@ -245,13 +245,13 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
 
     @Override
     public String visitShow_db_stmt(SQLParser.Show_db_stmtContext ctx) {
-        return manager.showDatabases();
+        return session.showDatabases();
     }
 
     @Override
     public String visitQuit_stmt(SQLParser.Quit_stmtContext ctx) {
         try {
-            manager.quit();
+            session.quit();
         } catch (Exception e) {
             return e.getMessage();
         }
@@ -261,7 +261,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
 
     @Override
     public String visitShow_table_stmt(SQLParser.Show_table_stmtContext ctx) {
-        return manager.showTables(ctx.database_name().getText().toLowerCase());
+        return session.showTables(ctx.database_name().getText().toLowerCase());
     }
 
     @Override
@@ -276,7 +276,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
         for (SQLParser.Value_entryContext subCtx : ctx.value_entry()) {
             String[] values = visitValue_entry(subCtx);
             try {
-                manager.insert(tableName, values, columnNames);
+                session.insert(tableName, values, columnNames);
             } catch (Exception e) {
                 return e.getMessage();
             }
@@ -319,7 +319,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
         if (ctx.K_WHERE() != null)
             logic = visitMultiple_condition(ctx.multiple_condition());
         try {
-            return manager.select(columnsProjected, queryTables, logic, distinct);
+            return session.select(columnsProjected, queryTables, logic, distinct);
         } catch (Exception e) {
             return e.getMessage();
         }
@@ -332,14 +332,14 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
         Expression expression = visitExpression(ctx.expression());
         if (ctx.K_WHERE() == null) {
             try {
-                return manager.update(tableName, columnName, expression, null);
+                return session.update(tableName, columnName, expression, null);
             } catch (Exception e) {
                 return e.getMessage();
             }
         }
         Logic logic = visitMultiple_condition(ctx.multiple_condition());
         try {
-            return manager.update(tableName, columnName, expression, logic);
+            return session.update(tableName, columnName, expression, logic);
         } catch (Exception e) {
             return e.getMessage();
         }
@@ -480,12 +480,12 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     @Override
     public QueryTable visitTable_query(SQLParser.Table_queryContext ctx) {
         if (ctx.K_JOIN().size() == 0)
-            return manager.getSingleJointTable(ctx.table_name(0).getText().toLowerCase());
+            return session.getSingleJointTable(ctx.table_name(0).getText().toLowerCase());
         Logic logic = visitMultiple_condition(ctx.multiple_condition());
         ArrayList<String> tableNames = new ArrayList<>();
         for (SQLParser.Table_nameContext subCtx : ctx.table_name())
             tableNames.add(subCtx.getText().toLowerCase());
-        return manager.getMultipleJointTable(tableNames, logic);
+        return session.getMultipleJointTable(tableNames, logic);
     }
 
     @Override

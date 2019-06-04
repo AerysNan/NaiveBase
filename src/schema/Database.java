@@ -59,6 +59,8 @@ public class Database {
         int hasPrimary = 0;
         HashSet<String> nameSet = new HashSet<>();
         for (Column c : columns) {
+            if (c.name.equals(uniqueIDName))
+                throw new ReservedNameException(uniqueIDName);
             if (nameSet.contains(c.name))
                 throw new DuplicateFieldException(tableName);
             nameSet.add(c.name);
@@ -76,7 +78,7 @@ public class Database {
         if (hasPrimary == 1)
             table = new Table(dataBaseName, tableName, columns);
         else {
-            Column primaryColumn = new Column("uid", ColumnType.LONG, 1, true, -1);
+            Column primaryColumn = new Column(uniqueIDName, ColumnType.LONG, 1, true, -1);
             Column[] newColumns = new Column[columns.length + 1];
             newColumns[columns.length] = primaryColumn;
             System.arraycopy(columns, 0, newColumns, 0, newColumns.length - 1);
