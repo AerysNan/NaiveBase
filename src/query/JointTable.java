@@ -36,13 +36,11 @@ public class JointTable extends QueryTable implements Iterator<Row> {
     private Logic joinLogic;
 
     public JointTable(ArrayList<Table> tables, Logic joinLogic) {
+        super();
         this.tables = tables;
         this.iterators = new ArrayList<>();
         this.currentRows = new LinkedList<>();
         this.joinLogic = joinLogic;
-        this.buffer = new LinkedList<>();
-        this.queue = new LinkedList<>();
-        this.isFirst = true;
         this.columns = new ArrayList<>();
         for (Table t : tables) {
             this.columns.addAll(t.columns);
@@ -215,7 +213,7 @@ public class JointTable extends QueryTable implements Iterator<Row> {
                 offset += table.columns.size();
             }
             if (!found) {
-                throw new TableNotExistsException(tableInfo[0]);
+                throw new RelationNotExistsException(tableInfo[0]);
             }
         }
         return index;

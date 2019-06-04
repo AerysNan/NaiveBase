@@ -49,7 +49,7 @@ public class Session {
             return;
         Database database = databases.get(current);
         if (!database.tables.containsKey(tableName))
-            throw new TableNotExistsException(tableName);
+            throw new RelationNotExistsException(tableName);
         String currentStash = current;
         current = adminDatabaseName;
         Table t = databases.get(adminDatabaseName).tables.get(userTableName);
@@ -70,7 +70,7 @@ public class Session {
             return;
         Database database = databases.get(current);
         if (!database.tables.containsKey(tableName))
-            throw new TableNotExistsException(tableName);
+            throw new RelationNotExistsException(tableName);
         String currentStash = current;
         current = adminDatabaseName;
         Table t = databases.get(adminDatabaseName).tables.get(userTableName);
@@ -197,7 +197,7 @@ public class Session {
     }
 
     public void deleteDatabase(String name) {
-        if (!name.equals(adminDatabaseName))
+        if (!user.equals(adminUserName))
             throw new NoAuthorityException();
         if (!databases.containsKey(name))
             throw new DatabaseNotExistsException(name);
@@ -215,7 +215,7 @@ public class Session {
         if (!authorized(current, tableName, AUTH_DROP))
             throw new NoAuthorityException();
         if (!databases.get(current).tables.containsKey(tableName))
-            throw new TableNotExistsException(tableName);
+            throw new RelationNotExistsException(tableName);
         databases.get(current).deleteTable(tableName);
         databases.get(current).tables.remove(tableName);
     }
@@ -236,19 +236,27 @@ public class Session {
 
     }
 
+    public void createView(String viewName, String[] columnsProjected, QueryTable[] queryTables, Logic selectLogic) {
+        databases.get(current).createView(viewName, columnsProjected, queryTables, selectLogic);
+    }
+
+    public void dropView(String viewName, boolean exists) {
+        databases.get(current).dropView(viewName, exists);
+    }
+
     public void insert(String tableName, String[] values, String[] columnNames) {
         if (!authorized(current, tableName, AUTH_INSERT))
             throw new NoAuthorityException();
         Database database = databases.get(current);
         if (!database.tables.containsKey(tableName))
-            throw new TableNotExistsException(tableName);
+            throw new RelationNotExistsException(tableName);
         database.tables.get(tableName).insert(values, columnNames);
     }
 
     public Row get(String tableName, Entry[] entries) {
         Database database = databases.get(current);
         if (!database.tables.containsKey(tableName))
-            throw new TableNotExistsException(tableName);
+            throw new RelationNotExistsException(tableName);
         return database.tables.get(tableName).get(entries);
     }
 
@@ -283,11 +291,9 @@ public class Session {
         };
         List<List<Cell>> body = new ArrayList<>();
         for (String s : databases.get(name).tables.keySet()) {
-            ArrayList<Cell> line = new ArrayList<>() {
-                {
-                    add(new Cell(s));
-                }
-            };
+            ArrayList<Cell> line = new ArrayList<>() {{
+                add(new Cell(s));
+            }};
             body.add(line);
         }
         if (body.size() == 0)
@@ -301,7 +307,7 @@ public class Session {
             if (queryTable instanceof SimpleTable) {
                 if (!authorized(current, ((SimpleTable) queryTable).getTable().tableName, AUTH_SELECT))
                     throw new NoAuthorityException();
-            } else {
+            } else if (queryTable instanceof JointTable) {
                 for (Table t : ((JointTable) queryTable).getTables())
                     if (!authorized(current, t.tableName, AUTH_SELECT))
                         throw new NoAuthorityException();
@@ -315,7 +321,7 @@ public class Session {
             throw new NoAuthorityException();
         Database database = databases.get(current);
         if (!database.tables.containsKey(tableName))
-            throw new TableNotExistsException(tableName);
+            throw new RelationNotExistsException(tableName);
         return database.tables.get(tableName).delete(logic);
     }
 
@@ -324,7 +330,7 @@ public class Session {
             throw new NoAuthorityException();
         Database database = databases.get(current);
         if (!database.tables.containsKey(tableName))
-            throw new TableNotExistsException(tableName);
+            throw new RelationNotExistsException(tableName);
         return database.tables.get(tableName).update(columnName, expression, logic);
     }
 
@@ -390,19 +396,21 @@ public class Session {
             d.quit();
     }
 
-    public SimpleTable getSingleJointTable(String tableName) {
+    public QueryTable getSingleJointTable(String tableName) {
         Database database = databases.get(current);
-        if (!database.tables.containsKey(tableName))
-            throw new TableNotExistsException(tableName);
-        return new SimpleTable(database.tables.get(tableName));
+        if (database.tables.containsKey(tableName))
+            return new SimpleTable(database.tables.get(tableName));
+        if (database.views.containsKey(tableName))
+            return new VirtualTable(tableName, database.views.get(tableName));
+        throw new RelationNotExistsException(tableName);
     }
 
-    public JointTable getMultipleJointTable(ArrayList<String> tableNames, Logic logic) {
+    public QueryTable getMultipleJointTable(ArrayList<String> tableNames, Logic logic) {
         Database database = databases.get(current);
         ArrayList<Table> tables = new ArrayList<>();
         for (String tableName : tableNames) {
             if (!database.tables.containsKey(tableName))
-                throw new TableNotExistsException(tableName);
+                throw new RelationNotExistsException(tableName);
             tables.add(database.tables.get(tableName));
         }
         return new JointTable(tables, logic);

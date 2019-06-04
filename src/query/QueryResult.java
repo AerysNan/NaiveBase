@@ -3,7 +3,7 @@ package query;
 import exception.AmbiguousColumnNameException;
 import exception.ColumnNameFormatException;
 import exception.ColumnNotFoundException;
-import exception.TableNotExistsException;
+import exception.RelationNotExistsException;
 import global.Global;
 import schema.Entry;
 import schema.Row;
@@ -16,7 +16,7 @@ import java.util.List;
 public class QueryResult {
 
     private ArrayList<MetaInfo> metaInfoInfos;
-    private ArrayList<Integer> index;
+    public ArrayList<Integer> index;
     private List<Cell> attrs;
 
     public QueryResult(QueryTable[] queryTables, String[] selectProjects) {
@@ -94,7 +94,7 @@ public class QueryResult {
                 offset += metaInfo.columns.size();
             }
             if (found == 0)
-                throw new TableNotExistsException(tableInfo[0]);
+                throw new RelationNotExistsException(tableInfo[0]);
         }
         return index;
     }

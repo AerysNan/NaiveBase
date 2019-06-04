@@ -8,17 +8,13 @@ import java.util.*;
 
 public class SimpleTable extends QueryTable implements Iterator<Row> {
     private Table table;
-
     private Iterator<Row> iterator;
-
     private Iterator<ArrayList<Row>> mapIterator;
 
     public SimpleTable(Table table) {
+        super();
         this.table = table;
         this.iterator = table.iterator();
-        this.buffer = new LinkedList<>();
-        this.queue = new LinkedList<>();
-        this.isFirst = true;
         this.columns = table.columns;
     }
 
