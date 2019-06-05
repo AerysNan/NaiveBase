@@ -1,6 +1,8 @@
 package index;
 
-public final class BPlusTree<K extends Comparable<K>, V> implements Iterable<V> {
+import javafx.util.Pair;
+
+public final class BPlusTree<K extends Comparable<K>, V> implements Iterable<Pair<K, V>> {
 
     BPlusTreeNode<K, V> root;
     private int size;
