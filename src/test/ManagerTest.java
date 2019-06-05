@@ -12,18 +12,25 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 
-public class TableTest {
+public class ManagerTest {
     private Manager manager;
     private Context context;
 
     @Before
     public void before() {
         manager = new Manager();
-        Global.maxPageNum = 8;
-        Global.maxPageSize = 128;
         context = new Context(Global.adminUserName, Global.adminDatabaseName);
         manager.createDatabase("test", context);
         manager.switchDatabase("test", context);
+    }
+
+    @Test
+    public void testScan() {
+        int testNum = 1000;
+        for (int i = 0; i < testNum; i++)
+            manager.createUser("User" + i, "password", context);
+        for (int i = 0; i < testNum; i++)
+            manager.dropUser("User" + i, true, context);
     }
 
     @Test

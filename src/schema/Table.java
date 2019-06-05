@@ -2,6 +2,7 @@ package schema;
 
 import exception.*;
 import index.BPlusTree;
+import javafx.util.Pair;
 import query.Logic;
 import type.ComparatorType;
 import type.ComparerType;
@@ -249,10 +250,8 @@ public class Table implements Iterable<Row> {
     }
 
     String delete(Logic logic) {
-        Iterator<Row> iterator = index.iterator();
         int count = 0;
-        while (iterator.hasNext()) {
-            Row row = iterator.next();
+        for (Row row : this) {
             if (failedLogic(logic, row))
                 continue;
             count++;
@@ -302,7 +301,7 @@ public class Table implements Iterable<Row> {
                 break;
         }
         int count = 0;
-        for (Row row : index) {
+        for (Row row : this) {
             if (failedLogic(logic, row))
                 continue;
             count++;
@@ -310,7 +309,7 @@ public class Table implements Iterable<Row> {
             Entry oldEntry = row.getEntries().get(columnIndex);
             Entry newEntry = new Entry(comparerValueToEntryValue(evalExpressionValue(expression, row), columnIndex));
             CompositeKey oldCompositeKey = null;
-            if(hasComposite)
+            if (hasComposite)
                 oldCompositeKey = getCompositeKey(row.getEntries());
             Page page = pages.get(row.getPageID());
             if (column.primary == 1) {
@@ -334,7 +333,7 @@ public class Table implements Iterable<Row> {
                 insertSecondaryIndex(row, columnIndex);
             }
             page.setDirty();
-            if(hasComposite) {
+            if (hasComposite) {
                 compositeKeyMap.remove(oldCompositeKey);
                 ArrayList<Entry> entries = row.getEntries();
                 compositeKeyMap.put(getCompositeKey(entries), entries.get(entries.size() - 1));
@@ -410,7 +409,7 @@ public class Table implements Iterable<Row> {
         oos.close();
     }
 
-    private ArrayList<Row> Deserialize(String path) throws IOException, ClassNotFoundException {
+    private static ArrayList<Row> Deserialize(String path) throws IOException, ClassNotFoundException {
         ObjectInputStream ois = new ObjectInputStream(new FileInputStream(new File(path)));
         ArrayList<Row> rows = (ArrayList<Row>) ois.readObject();
         ois.close();
@@ -436,7 +435,7 @@ public class Table implements Iterable<Row> {
             }
         }
         for (Entry entry : page.getPrimaryEntries())
-            index.update(entry, new Row(id));
+            index.get(entry).entries = null;
         pages.remove(id);
         times.remove(id);
     }
@@ -453,14 +452,9 @@ public class Table implements Iterable<Row> {
             return;
         Page page = new Page(this.databaseName, this.tableName, pageID);
         for (Row row : rows) {
-            for (int i = 0; i < columns.size(); i++) {
-                if (i == primaryIndex) {
-                    Entry entry = row.getEntries().get(i);
-                    page.addRow(entry, row.toString().length());
-                    index.update(entry, row);
-                    break;
-                }
-            }
+            Entry entry = row.getEntries().get(primaryIndex);
+            page.addRow(entry, row.toString().length());
+            index.get(entry).entries = row.entries;
         }
         pages.put(pageID, page);
         times.put(pageID, System.currentTimeMillis());
@@ -662,8 +656,35 @@ public class Table implements Iterable<Row> {
         }
     }
 
+    private class TableIterator implements Iterator<Row> {
+        private Iterator<Pair<Entry, Row>> iterator;
+
+        TableIterator(Table table) {
+            this.iterator = table.index.iterator();
+        }
+
+        @Override
+        public boolean hasNext() {
+            return iterator.hasNext();
+        }
+
+        @Override
+        public Row next() {
+            Pair<Entry, Row> pair = iterator.next();
+            Entry entry = pair.getKey();
+            Row row = pair.getValue();
+            if (row.getEntries() == null || row.getEntries().size() == 0) {
+                if (pageNum >= maxPageNum)
+                    putLRUPageToDisk();
+                getPageFromDisk(row.getPageID());
+                row = index.get(entry);
+                return row;
+            } else return row;
+        }
+    }
+
     @Override
     public Iterator<Row> iterator() {
-        return index.iterator();
+        return new TableIterator(this);
     }
 }
