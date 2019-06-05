@@ -1,6 +1,6 @@
 drop database if exists test;
-create database test;
-use test;
+create database school;
+use school;
 create table student (
   student_id int,
   student_name string(10),

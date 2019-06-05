@@ -1,4 +1,4 @@
-package connection;
+package server;
 
 import global.Global;
 

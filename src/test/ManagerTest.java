@@ -1,12 +1,17 @@
 package test;
 
-import connection.Context;
+import exception.RelationNotExistsException;
+import exception.TableNameCollisionException;
+import server.Context;
 import global.Global;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import schema.*;
 import type.ColumnType;
+
+import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -15,6 +20,7 @@ import static org.junit.Assert.assertTrue;
 public class ManagerTest {
     private Manager manager;
     private Context context;
+    private int userCount = 100;
 
     @Before
     public void before() {
@@ -22,15 +28,9 @@ public class ManagerTest {
         context = new Context(Global.adminUserName, Global.adminDatabaseName);
         manager.createDatabase("test", context);
         manager.switchDatabase("test", context);
-    }
-
-    @Test
-    public void testScan() {
-        int testNum = 1000;
-        for (int i = 0; i < testNum; i++)
+        for (int i = 0; i < userCount; i++)
             manager.createUser("User" + i, "password", context);
-        for (int i = 0; i < testNum; i++)
-            manager.dropUser("User" + i, true, context);
+
     }
 
     @Test
@@ -64,6 +64,57 @@ public class ManagerTest {
     }
 
     @Test
+    public void testConcurrentCreateTable() throws InterruptedException {
+        ArrayList<Thread> threads = new ArrayList<>();
+        int testNum = userCount;
+        AtomicInteger collision = new AtomicInteger(0);
+        for (int i = 0; i < testNum; i++) {
+            int finalI = i;
+            Thread thread = new Thread(() -> {
+                try {
+                    manager.createTable("concurrentCreateTable", new Column[]{
+                            new Column("id", ColumnType.INT, 1, true, -1)
+                    }, new Context("User" + finalI, "test"));
+                } catch (TableNameCollisionException e) {
+                    collision.getAndIncrement();
+                }
+            });
+            thread.start();
+            threads.add(thread);
+        }
+        for (Thread thread : threads)
+            thread.join();
+        assertEquals(testNum - 1, collision.intValue());
+    }
+
+    @Test
+    public void testConcurrentDropTable() throws InterruptedException {
+        int testNum = userCount;
+        ArrayList<Thread> threads = new ArrayList<>();
+        manager.createTable("concurrentDropTable", new Column[]{
+                new Column("id", ColumnType.INT, 1, true, -1)
+        }, new Context(Global.adminUserName, "test"));
+        for (int i = 0; i < userCount; i++)
+            manager.addAuth("User" + i, "concurrentDropTable", 1 << Global.AUTH_DROP, new Context(Global.adminUserName, "test"));
+        AtomicInteger collision = new AtomicInteger(0);
+        for (int i = 0; i < testNum; i++) {
+            int finalI = i;
+            Thread thread = new Thread(() -> {
+                try {
+                    manager.deleteTable("concurrentDropTable", true, new Context("User" + finalI, "test"));
+                } catch (RelationNotExistsException e) {
+                    collision.getAndIncrement();
+                }
+            });
+            thread.start();
+            threads.add(thread);
+        }
+        for (Thread thread : threads)
+            thread.join();
+        assertEquals(testNum - 1, collision.intValue());
+    }
+
+    @Test
     public void testGet() {
         int testNum = 2500;
         Column col1 = new Column("id", ColumnType.INT, 1, false, -1);
@@ -91,7 +142,9 @@ public class ManagerTest {
 
     @After
     public void after() {
-        manager.deleteDatabaseIfExist("test", context);
+        for (int i = 0; i < userCount; i++)
+            manager.dropUser("User" + i, true, context);
+        manager.deleteDatabase("test", false, context);
         manager.quit();
     }
 }
