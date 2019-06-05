@@ -60,7 +60,7 @@ public class BPlusTreeTest {
         BPlusTreeIterator<Integer, Integer> iterator = tree.iterator();
         int c = 0;
         while (iterator.hasNext()) {
-            assertTrue(values.contains(iterator.next()));
+            assertTrue(values.contains(iterator.next().getValue()));
             c++;
         }
         assertEquals(values.size(), c);

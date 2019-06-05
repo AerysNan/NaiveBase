@@ -1,6 +1,6 @@
 package parser;
 
-import connection.Context;
+import server.Context;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import schema.Manager;

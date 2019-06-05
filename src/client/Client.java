@@ -71,7 +71,6 @@ public class Client {
             return "";
         }
         fileName = data[1].trim();
-
         File file = new File(fileName);
         StringBuilder message = new StringBuilder();
         String s;
@@ -115,7 +114,6 @@ public class Client {
                 .longOpt("port")
                 .desc("client read port")
                 .hasArg()
-                .required()
                 .build()
         );
         options.addOption(Option.builder("h")
@@ -139,7 +137,7 @@ public class Client {
         }
         try {
             String[] config = cmd.getOptionValue("s", "localhost:8080").split(":");
-            new Client(config[0], Integer.parseInt(config[1]), Integer.parseInt(cmd.getOptionValue('p')));
+            new Client(config[0], Integer.parseInt(config[1]), Integer.parseInt(cmd.getOptionValue('p', "8081")));
         } catch (IOException e) {
             System.err.println("Failed to start client! Error message: " + e.getMessage());
             System.exit(-1);
