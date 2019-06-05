@@ -3,8 +3,14 @@ package query;
 import exception.InvalidComparisionException;
 import exception.KeyNotExistException;
 import global.Global;
-import schema.*;
-import java.util.*;
+import schema.Entry;
+import schema.Row;
+import schema.Table;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.SortedMap;
 
 public class SimpleTable extends QueryTable implements Iterator<Row> {
     private Table table;
