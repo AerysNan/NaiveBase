@@ -1,4 +1,4 @@
-package connection;
+package server;
 
 public class Context {
     public String username;

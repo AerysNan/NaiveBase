@@ -14,10 +14,12 @@ import type.LogicalOpType;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static global.Global.*;
 
 public class Table implements Iterable<Row> {
+    ReentrantReadWriteLock lock;
     private String databaseName;
     public String tableName;
     public ArrayList<Column> columns;
@@ -28,12 +30,12 @@ public class Table implements Iterable<Row> {
     private boolean hasUID;
     private int primaryIndex;
     private HashMap<CompositeKey, Entry> compositeKeyMap;
-
     private HashMap<Integer, Page> pages;
     private HashMap<Integer, Long> times;
     private int pageNum;
 
     Table(String databaseName, String tableName, Column[] columns) {
+        this.lock = new ReentrantReadWriteLock();
         this.databaseName = databaseName;
         this.tableName = tableName;
         this.columns = new ArrayList<>(Arrays.asList(columns));
@@ -123,7 +125,6 @@ public class Table implements Iterable<Row> {
                     throw new ColumnMismatchException();
         }
         Entry[] entries = new Entry[columns.size()];
-
         int derivativeColumn = hasUID ? 1 : 0;
         for (int i = 0; i < entries.length - derivativeColumn; i++) {
             Object value = null;
@@ -163,18 +164,23 @@ public class Table implements Iterable<Row> {
                 compositeKeyMap.put(compositeKey, uidEntry);
             }
         }
-        Row row = new Row(entries, pageNum);
-        for (int i = 0; i < entries.length; i++) {
-            if (columns.get(i).primary == 1) {
-                index.put(row.getEntries().get(i), row);
-                int size = pages.get(pageNum).addRow(row.getEntries().get(i), row.toString().length());
-                pages.get(pageNum).setDirty();
-                if (size >= maxPageSize)
-                    allocateNewPage();
-            } else
-                insertSecondaryIndex(row, i);
+        try {
+            lock.writeLock().lock();
+            Row row = new Row(entries, pageNum);
+            for (int i = 0; i < entries.length; i++) {
+                if (columns.get(i).primary == 1) {
+                    index.put(row.getEntries().get(i), row);
+                    int size = pages.get(pageNum).addRow(row.getEntries().get(i), row.toString().length());
+                    pages.get(pageNum).setDirty();
+                    if (size >= maxPageSize)
+                        allocateNewPage();
+                } else
+                    insertSecondaryIndex(row, i);
+            }
+            times.put(pages.get(pageNum).getID(), System.currentTimeMillis());
+        } finally {
+            lock.writeLock().unlock();
         }
-        times.put(pages.get(pageNum).getID(), System.currentTimeMillis());
     }
 
     private void insertSecondaryIndex(Row row, int i) {
@@ -208,35 +214,45 @@ public class Table implements Iterable<Row> {
     }
 
     public boolean contains(Entry[] entries) {
-        Entry entry;
-        if (entries.length == 1)
-            entry = entries[0];
-        else {
-            CompositeKey compositeKey = getCompositeKey(new ArrayList<>(Arrays.asList(entries)));
-            if (!compositeKeyMap.containsKey(compositeKey))
-                return false;
-            entry = compositeKeyMap.get(compositeKey);
+        try {
+            lock.writeLock().lock();
+            Entry entry;
+            if (entries.length == 1)
+                entry = entries[0];
+            else {
+                CompositeKey compositeKey = getCompositeKey(new ArrayList<>(Arrays.asList(entries)));
+                if (!compositeKeyMap.containsKey(compositeKey))
+                    return false;
+                entry = compositeKeyMap.get(compositeKey);
+            }
+            return index.contains(entry);
+        } finally {
+            lock.writeLock().unlock();
         }
-        return index.contains(entry);
     }
 
     public Row get(Entry[] entries) {
-        Entry entry;
-        if (entries.length == 1)
-            entry = entries[0];
-        else {
-            CompositeKey compositeKey = getCompositeKey(new ArrayList<>(Arrays.asList(entries)));
-            entry = compositeKeyMap.get(compositeKey);
+        try {
+            lock.readLock().lock();
+            Entry entry;
+            if (entries.length == 1)
+                entry = entries[0];
+            else {
+                CompositeKey compositeKey = getCompositeKey(new ArrayList<>(Arrays.asList(entries)));
+                entry = compositeKeyMap.get(compositeKey);
+            }
+            Row row = index.get(entry);
+            times.put(row.getPageID(), System.currentTimeMillis());
+            if (row.getEntries() == null || row.getEntries().size() == 0) {
+                if (pageNum >= maxPageNum)
+                    putLRUPageToDisk();
+                getPageFromDisk(row.getPageID());
+                return index.get(entry);
+            } else
+                return row;
+        } finally {
+            lock.readLock().unlock();
         }
-        Row row = index.get(entry);
-        times.put(row.getPageID(), System.currentTimeMillis());
-        if (row.getEntries() == null || row.getEntries().size() == 0) {
-            if (pageNum >= maxPageNum)
-                putLRUPageToDisk();
-            getPageFromDisk(row.getPageID());
-            return index.get(entry);
-        } else
-            return row;
     }
 
     public ArrayList<Row> getBySecondaryIndex(Column column, Entry entry) {
@@ -245,32 +261,37 @@ public class Table implements Iterable<Row> {
         if (primaryIndex == null)
             return null;
         for (Entry e : primaryIndex)
-            result.add(get(new Entry[]{e}));
+            result.add(get(new Entry[] { e }));
         return result;
     }
 
     String delete(Logic logic) {
-        int count = 0;
-        for (Row row : this) {
-            if (failedLogic(logic, row))
-                continue;
-            count++;
-            Entry key = row.getEntries().get(primaryIndex);
-            Page page = pages.get(row.getPageID());
-            page.deleteRow(key, row.toString().length());
-            page.setDirty();
-            index.remove(key);
-            for (int i = 0; i < columns.size(); i++) {
-                if (i == primaryIndex)
+        try {
+            lock.writeLock().lock();
+            int count = 0;
+            for (Row row : this) {
+                if (failedLogic(logic, row))
                     continue;
-                deleteSecondaryIndex(row, i);
+                count++;
+                Entry key = row.getEntries().get(primaryIndex);
+                Page page = pages.get(row.getPageID());
+                page.deleteRow(key, row.toString().length());
+                page.setDirty();
+                index.remove(key);
+                for (int i = 0; i < columns.size(); i++) {
+                    if (i == primaryIndex)
+                        continue;
+                    deleteSecondaryIndex(row, i);
+                }
+                if (hasComposite) {
+                    CompositeKey compositeKey = getCompositeKey(row.getEntries());
+                    compositeKeyMap.remove(compositeKey);
+                }
             }
-            if (hasComposite) {
-                CompositeKey compositeKey = getCompositeKey(row.getEntries());
-                compositeKeyMap.remove(compositeKey);
-            }
+            return "Deleted " + count + (count == 1 ? " row." : " rows.");
+        } finally {
+            lock.writeLock().unlock();
         }
-        return "Deleted " + count + (count == 1 ? " row." : " rows.");
     }
 
     String update(String columnName, Expression expression, Logic logic) {
@@ -301,45 +322,51 @@ public class Table implements Iterable<Row> {
                 break;
         }
         int count = 0;
-        for (Row row : this) {
-            if (failedLogic(logic, row))
-                continue;
-            count++;
-            int oldSize = row.toString().length();
-            Entry oldEntry = row.getEntries().get(columnIndex);
-            Entry newEntry = new Entry(comparerValueToEntryValue(evalExpressionValue(expression, row), columnIndex));
-            CompositeKey oldCompositeKey = null;
-            if (hasComposite)
-                oldCompositeKey = getCompositeKey(row.getEntries());
-            Page page = pages.get(row.getPageID());
-            if (column.primary == 1) {
-                for (int i = 0; i < columns.size(); i++)
-                    if (i != primaryIndex)
-                        deleteSecondaryIndex(row, i);
-                row.entries.set(columnIndex, newEntry);
-                page.updatePrimaryEntry(oldEntry, newEntry);
-                if (index.contains(newEntry))
-                    index.update(newEntry, row);
-                else {
-                    index.remove(oldEntry);
-                    index.put(newEntry, row);
+        try {
+            lock.writeLock().lock();
+            for (Row row : this) {
+                if (failedLogic(logic, row))
+                    continue;
+                count++;
+                int oldSize = row.toString().length();
+                Entry oldEntry = row.getEntries().get(columnIndex);
+                Entry newEntry = new Entry(
+                        comparerValueToEntryValue(evalExpressionValue(expression, row), columnIndex));
+                CompositeKey oldCompositeKey = null;
+                if (hasComposite)
+                    oldCompositeKey = getCompositeKey(row.getEntries());
+                Page page = pages.get(row.getPageID());
+                if (column.primary == 1) {
+                    for (int i = 0; i < columns.size(); i++)
+                        if (i != primaryIndex)
+                            deleteSecondaryIndex(row, i);
+                    row.entries.set(columnIndex, newEntry);
+                    page.updatePrimaryEntry(oldEntry, newEntry);
+                    if (index.contains(newEntry))
+                        index.update(newEntry, row);
+                    else {
+                        index.remove(oldEntry);
+                        index.put(newEntry, row);
+                    }
+                    for (int i = 0; i < columns.size(); i++)
+                        if (i != primaryIndex)
+                            insertSecondaryIndex(row, i);
+                } else {
+                    deleteSecondaryIndex(row, columnIndex);
+                    row.entries.set(columnIndex, newEntry);
+                    insertSecondaryIndex(row, columnIndex);
                 }
-                for (int i = 0; i < columns.size(); i++)
-                    if (i != primaryIndex)
-                        insertSecondaryIndex(row, i);
-            } else {
-                deleteSecondaryIndex(row, columnIndex);
-                row.entries.set(columnIndex, newEntry);
-                insertSecondaryIndex(row, columnIndex);
+                page.setDirty();
+                if (hasComposite) {
+                    compositeKeyMap.remove(oldCompositeKey);
+                    ArrayList<Entry> entries = row.getEntries();
+                    compositeKeyMap.put(getCompositeKey(entries), entries.get(entries.size() - 1));
+                }
+                int newSize = row.toString().length();
+                pages.get(row.getPageID()).updateSize(oldSize, newSize);
             }
-            page.setDirty();
-            if (hasComposite) {
-                compositeKeyMap.remove(oldCompositeKey);
-                ArrayList<Entry> entries = row.getEntries();
-                compositeKeyMap.put(getCompositeKey(entries), entries.get(entries.size() - 1));
-            }
-            int newSize = row.toString().length();
-            pages.get(row.getPageID()).updateSize(oldSize, newSize);
+        } finally {
+            lock.writeLock().unlock();
         }
         return "Updated " + count + (count == 1 ? " row." : " rows.");
     }
@@ -363,15 +390,15 @@ public class Table implements Iterable<Row> {
         if (value == null)
             return null;
         switch (columns.get(index).type) {
-            case STRING:
-            case DOUBLE:
-                return value;
-            case INT:
-                return ((Number) value).intValue();
-            case FLOAT:
-                return ((Number) value).floatValue();
-            case LONG:
-                return ((Number) value).longValue();
+        case STRING:
+        case DOUBLE:
+            return value;
+        case INT:
+            return ((Number) value).intValue();
+        case FLOAT:
+            return ((Number) value).floatValue();
+        case LONG:
+            return ((Number) value).longValue();
         }
         return null;
     }
@@ -384,16 +411,16 @@ public class Table implements Iterable<Row> {
                 return null;
         }
         switch (columns.get(index).type) {
-            case DOUBLE:
-                return Double.parseDouble(s);
-            case INT:
-                return Integer.parseInt(s);
-            case FLOAT:
-                return Float.parseFloat(s);
-            case LONG:
-                return Long.parseLong(s);
-            case STRING:
-                return s.substring(1, s.length() - 1);
+        case DOUBLE:
+            return Double.parseDouble(s);
+        case INT:
+            return Integer.parseInt(s);
+        case FLOAT:
+            return Float.parseFloat(s);
+        case LONG:
+            return Long.parseLong(s);
+        case STRING:
+            return s.substring(1, s.length() - 1);
         }
         return null;
     }
@@ -549,14 +576,19 @@ public class Table implements Iterable<Row> {
     }
 
     void commit() {
-        for (Page page : pages.values()) {
-            if (page.isDirty()) {
-                try {
-                    Serialize(page);
-                } catch (IOException e) {
-                    throw new InternalException("failed to write dirty page to disk.");
+        try {
+            lock.writeLock().lock();
+            for (Page page : pages.values()) {
+                if (page.isDirty()) {
+                    try {
+                        Serialize(page);
+                    } catch (IOException e) {
+                        throw new InternalException("failed to write dirty page to disk.");
+                    }
                 }
             }
+        } finally {
+            lock.writeLock().unlock();
         }
     }
 
@@ -566,18 +598,17 @@ public class Table implements Iterable<Row> {
         return t1 != null && t1 != ComparerType.NULL && t1 == t2;
     }
 
-
     private ComparerType evalExpressionType(Expression expression) {
         if (expression.terminal) {
             switch (expression.comparer.type) {
-                case STRING:
-                    return ComparerType.STRING;
-                case NUMBER:
-                    return ComparerType.NUMBER;
-                case COLUMN:
-                    return getColumnType((String) expression.comparer.value);
-                default:
-                    return ComparerType.NULL;
+            case STRING:
+                return ComparerType.STRING;
+            case NUMBER:
+                return ComparerType.NUMBER;
+            case COLUMN:
+                return getColumnType((String) expression.comparer.value);
+            default:
+                return ComparerType.NULL;
             }
         } else {
             ComparerType t1 = evalExpressionType(expression.left);
@@ -600,13 +631,13 @@ public class Table implements Iterable<Row> {
         if (i < 0)
             throw new ColumnNotFoundException(columnName);
         switch (columns.get(i).type) {
-            case LONG:
-            case FLOAT:
-            case INT:
-            case DOUBLE:
-                return ComparerType.NUMBER;
-            case STRING:
-                return ComparerType.STRING;
+        case LONG:
+        case FLOAT:
+        case INT:
+        case DOUBLE:
+            return ComparerType.NUMBER;
+        case STRING:
+            return ComparerType.STRING;
         }
         throw new ColumnNotFoundException(columnName);
     }
@@ -625,14 +656,14 @@ public class Table implements Iterable<Row> {
     private Comparable evalExpressionValue(Expression expression, Row row) {
         if (expression.terminal) {
             switch (expression.comparer.type) {
-                case NUMBER:
-                case STRING:
-                case NULL:
-                    return expression.comparer.value;
-                case COLUMN:
-                    return getColumnValue((String) expression.comparer.value, row);
-                default:
-                    return null;
+            case NUMBER:
+            case STRING:
+            case NULL:
+                return expression.comparer.value;
+            case COLUMN:
+                return getColumnValue((String) expression.comparer.value, row);
+            default:
+                return null;
             }
         } else {
             Comparable v1 = evalExpressionValue(expression.left, row);
@@ -642,16 +673,16 @@ public class Table implements Iterable<Row> {
             double d1 = ((Number) v1).doubleValue();
             double d2 = ((Number) v2).doubleValue();
             switch (expression.numericOpType) {
-                case ADD:
-                    return d1 + d2;
-                case DIV:
-                    return d1 / d2;
-                case SUB:
-                    return d1 - d2;
-                case MUL:
-                    return d1 * d2;
-                default:
-                    return null;
+            case ADD:
+                return d1 + d2;
+            case DIV:
+                return d1 / d2;
+            case SUB:
+                return d1 - d2;
+            case MUL:
+                return d1 * d2;
+            default:
+                return null;
             }
         }
     }
@@ -679,7 +710,8 @@ public class Table implements Iterable<Row> {
                 getPageFromDisk(row.getPageID());
                 row = index.get(entry);
                 return row;
-            } else return row;
+            } else
+                return row;
         }
     }
 

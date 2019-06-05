@@ -1,4 +1,4 @@
-package connection;
+package server;
 
 import org.apache.commons.cli.*;
 import parser.Evaluator;

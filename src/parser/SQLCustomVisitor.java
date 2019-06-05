@@ -1,6 +1,6 @@
 package parser;
 
-import connection.Context;
+import server.Context;
 import exception.ColumnNotFoundException;
 import exception.NotImplementedException;
 import exception.ValueFormatException;
@@ -111,10 +111,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     private String visitDrop_db_stmt(SQLParser.Drop_db_stmtContext ctx, Context context) {
         String name = ctx.database_name().getText();
         try {
-            if (ctx.K_IF() != null && ctx.K_EXISTS() != null)
-                manager.deleteDatabaseIfExist(name.toLowerCase(), context);
-            else
-                manager.deleteDatabase(name.toLowerCase(), context);
+            manager.deleteDatabase(name.toLowerCase(), ctx.K_IF() == null, context);
         } catch (Exception e) {
             return e.getMessage();
         }
@@ -271,10 +268,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     private String visitDrop_table_stmt(SQLParser.Drop_table_stmtContext ctx, Context context) {
         String name = ctx.table_name().getText();
         try {
-            if (ctx.K_IF() != null && ctx.K_EXISTS() != null)
-                manager.deleteTableIfExist(name.toLowerCase(), context);
-            else
-                manager.deleteTable(name.toLowerCase(), context);
+            manager.deleteTable(name.toLowerCase(), ctx.K_IF() == null, context);
         } catch (Exception e) {
             return e.getMessage();
         }

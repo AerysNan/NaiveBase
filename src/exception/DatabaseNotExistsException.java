@@ -8,6 +8,6 @@ public class DatabaseNotExistsException extends RuntimeException {
 
     @Override
     public String getMessage() {
-        return "Exception: database " + name + " doesn't exist!";
+        return "Exception: database " + name + " doesn't exist or has just been deleted!";
     }
 }

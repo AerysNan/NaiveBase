@@ -9,6 +9,7 @@ import format.PrintFormat;
 import java.io.*;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static global.Global.*;
 
@@ -16,9 +17,11 @@ public class Database {
     private String dataBaseName;
     HashMap<String, Table> tables;
     HashMap<String, View> views;
+    ReentrantReadWriteLock lock;
 
     public Database(String name) {
         this.dataBaseName = name;
+        this.lock = new ReentrantReadWriteLock();
         this.tables = new HashMap<>();
         this.views = new HashMap<>();
         recoverDatabase();
@@ -56,37 +59,42 @@ public class Database {
     }
 
     public void createTable(String tableName, Column[] columns) {
-        if (tables.containsKey(tableName))
-            throw new TableNameCollisionException(tableName);
-        int hasPrimary = 0;
-        HashSet<String> nameSet = new HashSet<>();
-        for (Column c : columns) {
-            if (c.name.equals(uniqueIDName))
-                throw new ReservedNameException(uniqueIDName);
-            if (nameSet.contains(c.name))
-                throw new DuplicateFieldException(tableName);
-            nameSet.add(c.name);
-            if (c.primary == 1) {
-                if (hasPrimary > 0)
-                    throw new MultiplePrimaryKeyException(tableName);
-                hasPrimary = 1;
-            } else if (c.primary == 2) {
-                if (hasPrimary == 1)
-                    throw new MultiplePrimaryKeyException(tableName);
-                hasPrimary = 2;
+        try {
+            lock.writeLock().lock();
+            if (tables.containsKey(tableName))
+                throw new TableNameCollisionException(tableName);
+            int hasPrimary = 0;
+            HashSet<String> nameSet = new HashSet<>();
+            for (Column c : columns) {
+                if (c.name.equals(uniqueIDName))
+                    throw new ReservedNameException(uniqueIDName);
+                if (nameSet.contains(c.name))
+                    throw new DuplicateFieldException(tableName);
+                nameSet.add(c.name);
+                if (c.primary == 1) {
+                    if (hasPrimary > 0)
+                        throw new MultiplePrimaryKeyException(tableName);
+                    hasPrimary = 1;
+                } else if (c.primary == 2) {
+                    if (hasPrimary == 1)
+                        throw new MultiplePrimaryKeyException(tableName);
+                    hasPrimary = 2;
+                }
             }
+            Table table;
+            if (hasPrimary == 1)
+                table = new Table(dataBaseName, tableName, columns);
+            else {
+                Column primaryColumn = new Column(uniqueIDName, ColumnType.LONG, 1, true, -1);
+                Column[] newColumns = new Column[columns.length + 1];
+                newColumns[columns.length] = primaryColumn;
+                System.arraycopy(columns, 0, newColumns, 0, newColumns.length - 1);
+                table = new Table(dataBaseName, tableName, newColumns);
+            }
+            tables.put(tableName, table);
+        } finally {
+            lock.writeLock().unlock();
         }
-        Table table;
-        if (hasPrimary == 1)
-            table = new Table(dataBaseName, tableName, columns);
-        else {
-            Column primaryColumn = new Column(uniqueIDName, ColumnType.LONG, 1, true, -1);
-            Column[] newColumns = new Column[columns.length + 1];
-            newColumns[columns.length] = primaryColumn;
-            System.arraycopy(columns, 0, newColumns, 0, newColumns.length - 1);
-            table = new Table(dataBaseName, tableName, newColumns);
-        }
-        tables.put(tableName, table);
     }
 
     public void deleteAllTable() {
@@ -102,23 +110,33 @@ public class Database {
     }
 
     void createView(String viewName, String[] columnsProjected, QueryTable[] queryTables, Logic selectLogic) {
-        if (tables.containsKey(viewName) || views.containsKey(viewName))
-            throw new ViewNameCollisionException(viewName);
-        QueryResult queryResult = new QueryResult(queryTables, columnsProjected);
-        for (QueryTable queryTable : queryTables)
-            queryTable.setSelectLogic(selectLogic);
-        View view = buildView(queryTables, queryResult);
-        views.put(viewName, view);
+        try {
+            lock.writeLock().lock();
+            if (tables.containsKey(viewName) || views.containsKey(viewName))
+                throw new ViewNameCollisionException(viewName);
+            QueryResult queryResult = new QueryResult(queryTables, columnsProjected);
+            for (QueryTable queryTable : queryTables)
+                queryTable.setSelectLogic(selectLogic);
+            View view = buildView(queryTables, queryResult);
+            views.put(viewName, view);
+        } finally {
+            lock.writeLock().unlock();
+        }
     }
 
 
     void dropView(String viewName, boolean exists) {
-        if (!views.containsKey(viewName)) {
-            if (exists)
-                throw new ViewNotExistsException(viewName);
-            return;
+        try {
+            lock.writeLock().lock();
+            if (!views.containsKey(viewName)) {
+                if (exists)
+                    throw new ViewNotExistsException(viewName);
+                return;
+            }
+            views.remove(viewName);
+        } finally {
+            lock.writeLock().unlock();
         }
-        views.remove(viewName);
     }
 
     private View buildView(QueryTable[] queryTables, QueryResult queryResult) {
@@ -223,10 +241,15 @@ public class Database {
     }
 
     public String select(String[] columnsProjected, QueryTable[] queryTables, Logic selectLogic, boolean distinct) {
-        QueryResult queryResult = new QueryResult(queryTables, columnsProjected);
-        for (QueryTable queryTable : queryTables)
-            queryTable.setSelectLogic(selectLogic);
-        return buildCartesianProduct(queryTables, queryResult, distinct);
+        try {
+            lock.readLock().lock();
+            QueryResult queryResult = new QueryResult(queryTables, columnsProjected);
+            for (QueryTable queryTable : queryTables)
+                queryTable.setSelectLogic(selectLogic);
+            return buildCartesianProduct(queryTables, queryResult, distinct);
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     private void recoverDatabase() {
@@ -298,14 +321,24 @@ public class Database {
     }
 
     public Table getTable(String name) {
-        if (!tables.containsKey(name))
-            throw new RelationNotExistsException(name);
-        return tables.get(name);
+        try {
+            lock.readLock().lock();
+            if (!tables.containsKey(name))
+                throw new RelationNotExistsException(name);
+            return tables.get(name);
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     void quit() {
-        persistDatabase();
-        for (Table t : tables.values())
-            t.commit();
+        try {
+            lock.writeLock().lock();
+            persistDatabase();
+            for (Table table : tables.values())
+                table.commit();
+        } finally {
+            lock.writeLock().unlock();
+        }
     }
 }
