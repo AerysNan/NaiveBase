@@ -45,8 +45,12 @@ public class Session extends Thread {
         writeSocket = new Socket(data[0], Integer.valueOf(data[1]));
         writer = new BufferedWriter(new OutputStreamWriter(writeSocket.getOutputStream()));
         System.out.println("Session built!");
-        message = read();
-        data = message.split(" ");
+        return login();
+    }
+
+    private boolean login() {
+        String message = read();
+        String[] data = message.split(" ");
         String errorMessage;
         if (data.length == 2) {
             try {
@@ -67,8 +71,11 @@ public class Session extends Thread {
     @Override
     public void run() {
         try {
-            if (!connect())
-                return;
+            if (!connect()) {
+                while (true)
+                    if (login())
+                        break;
+            }
         } catch (Exception e) {
             System.err.println("Failed to connect to client!");
             return;
@@ -77,6 +84,7 @@ public class Session extends Thread {
             String message = read();
             if (message == null) {
                 System.err.println("Failed to read from client!");
+                Server.manager.logout(context.username);
                 return;
             }
             if (!"".equals(message))

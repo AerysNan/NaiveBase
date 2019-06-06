@@ -29,7 +29,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
     }
 
     private String visitSql_stmt_list(SQLParser.Sql_stmt_listContext ctx, Context context) {
-        StringJoiner sj = new StringJoiner("\n");
+        StringJoiner sj = new StringJoiner("\n\n");
         for (SQLParser.Sql_stmtContext subCtx : ctx.sql_stmt())
             sj.add(visitSql_stmt(subCtx, context));
         return sj.toString();
