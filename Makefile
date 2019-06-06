@@ -15,3 +15,4 @@ endif
 clean:
 	rm -rf meta/
 	rm -rf data/
+	rm -rf databases.dat
