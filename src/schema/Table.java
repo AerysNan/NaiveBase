@@ -261,7 +261,7 @@ public class Table implements Iterable<Row> {
         if (primaryIndex == null)
             return null;
         for (Entry e : primaryIndex)
-            result.add(get(new Entry[] { e }));
+            result.add(get(new Entry[]{e}));
         return result;
     }
 
@@ -390,15 +390,15 @@ public class Table implements Iterable<Row> {
         if (value == null)
             return null;
         switch (columns.get(index).type) {
-        case STRING:
-        case DOUBLE:
-            return value;
-        case INT:
-            return ((Number) value).intValue();
-        case FLOAT:
-            return ((Number) value).floatValue();
-        case LONG:
-            return ((Number) value).longValue();
+            case STRING:
+            case DOUBLE:
+                return value;
+            case INT:
+                return ((Number) value).intValue();
+            case FLOAT:
+                return ((Number) value).floatValue();
+            case LONG:
+                return ((Number) value).longValue();
         }
         return null;
     }
@@ -411,16 +411,16 @@ public class Table implements Iterable<Row> {
                 return null;
         }
         switch (columns.get(index).type) {
-        case DOUBLE:
-            return Double.parseDouble(s);
-        case INT:
-            return Integer.parseInt(s);
-        case FLOAT:
-            return Float.parseFloat(s);
-        case LONG:
-            return Long.parseLong(s);
-        case STRING:
-            return s.substring(1, s.length() - 1);
+            case DOUBLE:
+                return Double.parseDouble(s);
+            case INT:
+                return Integer.parseInt(s);
+            case FLOAT:
+                return Float.parseFloat(s);
+            case LONG:
+                return Long.parseLong(s);
+            case STRING:
+                return s.substring(1, s.length() - 1);
         }
         return null;
     }
@@ -601,14 +601,14 @@ public class Table implements Iterable<Row> {
     private ComparerType evalExpressionType(Expression expression) {
         if (expression.terminal) {
             switch (expression.comparer.type) {
-            case STRING:
-                return ComparerType.STRING;
-            case NUMBER:
-                return ComparerType.NUMBER;
-            case COLUMN:
-                return getColumnType((String) expression.comparer.value);
-            default:
-                return ComparerType.NULL;
+                case STRING:
+                    return ComparerType.STRING;
+                case NUMBER:
+                    return ComparerType.NUMBER;
+                case COLUMN:
+                    return getColumnType((String) expression.comparer.value);
+                default:
+                    return ComparerType.NULL;
             }
         } else {
             ComparerType t1 = evalExpressionType(expression.left);
@@ -631,13 +631,13 @@ public class Table implements Iterable<Row> {
         if (i < 0)
             throw new ColumnNotFoundException(columnName);
         switch (columns.get(i).type) {
-        case LONG:
-        case FLOAT:
-        case INT:
-        case DOUBLE:
-            return ComparerType.NUMBER;
-        case STRING:
-            return ComparerType.STRING;
+            case LONG:
+            case FLOAT:
+            case INT:
+            case DOUBLE:
+                return ComparerType.NUMBER;
+            case STRING:
+                return ComparerType.STRING;
         }
         throw new ColumnNotFoundException(columnName);
     }
@@ -656,14 +656,14 @@ public class Table implements Iterable<Row> {
     private Comparable evalExpressionValue(Expression expression, Row row) {
         if (expression.terminal) {
             switch (expression.comparer.type) {
-            case NUMBER:
-            case STRING:
-            case NULL:
-                return expression.comparer.value;
-            case COLUMN:
-                return getColumnValue((String) expression.comparer.value, row);
-            default:
-                return null;
+                case NUMBER:
+                case STRING:
+                case NULL:
+                    return expression.comparer.value;
+                case COLUMN:
+                    return getColumnValue((String) expression.comparer.value, row);
+                default:
+                    return null;
             }
         } else {
             Comparable v1 = evalExpressionValue(expression.left, row);
@@ -673,16 +673,16 @@ public class Table implements Iterable<Row> {
             double d1 = ((Number) v1).doubleValue();
             double d2 = ((Number) v2).doubleValue();
             switch (expression.numericOpType) {
-            case ADD:
-                return d1 + d2;
-            case DIV:
-                return d1 / d2;
-            case SUB:
-                return d1 - d2;
-            case MUL:
-                return d1 * d2;
-            default:
-                return null;
+                case ADD:
+                    return d1 + d2;
+                case DIV:
+                    return d1 / d2;
+                case SUB:
+                    return d1 - d2;
+                case MUL:
+                    return d1 * d2;
+                default:
+                    return null;
             }
         }
     }
