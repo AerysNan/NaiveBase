@@ -84,7 +84,7 @@ public class Table implements Iterable<Row> {
                 throw new InternalException("failed to open table data file.");
             }
             if (rows.isEmpty())
-                return;
+                continue;
             int pageID = rows.get(0).getPageID();
             Page page = new Page(databaseName, tableName, pageID);
             for (Row row : rows) {
