@@ -4,8 +4,9 @@
 /meta
 *.iml
 *.dat
-SQL*
+/src/parser/SQL*
 !SQL.g4
 !SQLCustomVisitor.java
-!sql.txt
 admin.conf
+/src/proto/*
+!sql.proto

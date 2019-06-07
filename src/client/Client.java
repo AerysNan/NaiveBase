@@ -8,14 +8,14 @@ import org.apache.commons.cli.*;
 
 class Client extends ClientBasic {
 
-    private Client(String ip, int writePort, int readPort) throws IOException {
-        super(ip, writePort, readPort);
+    private Client(String ip, int writePort, String clientIP, int readPort) throws IOException {
+        super(ip, writePort, clientIP, readPort);
         Scanner sc = new Scanner(System.in);
         System.out.print("Username: ");
         String username = sc.nextLine();
         System.out.print("Password: ");
         String password = Global.encrypt(sc.nextLine());
-        write(username + " " + password);
+        write(username + " " +password);
         String response = read();
         if (response.startsWith("OK"))
             System.out.println("Logged in succeeded!");
@@ -31,7 +31,7 @@ class Client extends ClientBasic {
         if (cmd == null) return;
         try {
             String[] config = cmd.getOptionValue("s", "localhost:8080").split(":");
-            new Client(config[0], Integer.parseInt(config[1]), Integer.parseInt(cmd.getOptionValue('p', "8081")));
+            new Client(config[0], Integer.parseInt(config[1]), cmd.getOptionValue('a', "localhost"), Integer.parseInt(cmd.getOptionValue('p', "8081")));
         } catch (IOException e) {
             System.err.println("Failed to start client! Error message: " + e.getMessage());
             System.exit(-1);

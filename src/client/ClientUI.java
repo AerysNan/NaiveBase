@@ -6,8 +6,8 @@ import org.apache.commons.cli.CommandLine;
 
 class ClientUI extends ClientBasic {
 
-    private ClientUI(String ip, int writePort, int readPort) throws IOException {
-        super(ip, writePort, readPort);
+    private ClientUI(String ip, int writePort, String clientIP, int readPort) throws IOException {
+        super(ip, writePort, clientIP, readPort);
     }
 
     public static void main(String[] args) {
@@ -15,7 +15,7 @@ class ClientUI extends ClientBasic {
         if (cmd == null) return;
         try {
             String[] config = cmd.getOptionValue("s", "localhost:8080").split(":");
-            new ClientUI(config[0], Integer.parseInt(config[1]), Integer.parseInt(cmd.getOptionValue('p', "8082")));
+            new ClientUI(config[0], Integer.parseInt(config[1]), cmd.getOptionValue('a', "localhost"), Integer.parseInt(cmd.getOptionValue('p', "8082")));
         } catch (IOException e) {
             System.err.println("Failed to start client! Error message: " + e.getMessage());
             System.exit(-1);

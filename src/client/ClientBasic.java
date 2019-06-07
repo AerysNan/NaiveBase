@@ -1,6 +1,7 @@
 package client;
 
 import org.apache.commons.cli.*;
+
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -12,10 +13,10 @@ class ClientBasic {
     private static BufferedReader reader;
     private static BufferedWriter writer;
 
-    ClientBasic(String ip, int writePort, int readPort) throws IOException {
+    ClientBasic(String ip, int writePort, String clientIP, int readPort) throws IOException {
         writeSocket = new Socket(ip, writePort);
         writer = new BufferedWriter(new OutputStreamWriter(writeSocket.getOutputStream()));
-        write("localhost " + readPort);
+        write(clientIP + " " + readPort);
         serverSocket = new ServerSocket(readPort);
         readSocket = serverSocket.accept();
         reader = new BufferedReader(new InputStreamReader(readSocket.getInputStream()));
@@ -89,6 +90,13 @@ class ClientBasic {
                 .desc("server listen address")
                 .hasArg()
                 .required(false)
+                .build()
+        );
+        options.addOption(Option.builder("a")
+                .argName("IP")
+                .longOpt("address")
+                .desc("client connect address")
+                .hasArg()
                 .build()
         );
         options.addOption(Option.builder("p")

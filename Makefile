@@ -12,6 +12,10 @@ else
 	$(antlr) $(TARGET) $(CONFIG)
 endif
 
+proto:
+	cd src/proto/ ;\
+	protoc sql.proto --java_out=../
+
 clean:
 	rm -rf meta/
 	rm -rf data/
