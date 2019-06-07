@@ -42,7 +42,6 @@ class ClientUIConnect extends JFrame implements ActionListener {
             return columnName.length;
         }
 
-
         public int getRowCount() {
             return data.length;
         }
