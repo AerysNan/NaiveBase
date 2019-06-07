@@ -41,6 +41,8 @@ public class Session extends Thread {
     private boolean connect() throws IOException {
         reader = new BufferedReader(new InputStreamReader(readSocket.getInputStream()));
         String message = read();
+        if (message == null)
+            return false;
         String[] data = message.split(" ");
         writeSocket = new Socket(data[0], Integer.valueOf(data[1]));
         writer = new BufferedWriter(new OutputStreamWriter(writeSocket.getOutputStream()));
@@ -50,6 +52,8 @@ public class Session extends Thread {
 
     private boolean login() {
         String message = read();
+        if (message == null)
+            return false;
         String[] data = message.split(" ");
         String errorMessage;
         if (data.length == 2) {
