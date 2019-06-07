@@ -50,6 +50,8 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
             return visitGrant_stmt(ctx.grant_stmt(), context);
         if (ctx.create_view_stmt() != null)
             return visitCreate_view_stmt(ctx.create_view_stmt(), context);
+        if(ctx.show_meta_stmt() != null)
+            return visitShow_meta_stmt(ctx.show_meta_stmt(), context);
         if (ctx.drop_view_stmt() != null)
             return visitDrop_view_stmt(ctx.drop_view_stmt(), context);
         if (ctx.revoke_stmt() != null)
@@ -97,6 +99,7 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
         return "Created user " + username + ".";
     }
 
+
     private String visitDrop_user_stmt(SQLParser.Drop_user_stmtContext ctx, Context context) {
         String username = ctx.user_name().getText().toLowerCase();
         boolean exists = ctx.K_IF() == null;
@@ -106,6 +109,15 @@ public class SQLCustomVisitor extends SQLBaseVisitor {
             return e.getMessage();
         }
         return "Dropped user " + username + ".";
+    }
+
+    private String visitShow_meta_stmt(SQLParser.Show_meta_stmtContext ctx, Context context) {
+        String tableName = ctx.table_name().getText().toLowerCase();
+        try {
+            return manager.showMeta(tableName, context);
+        } catch (Exception e) {
+            return e.getMessage();
+        }
     }
 
     private String visitDrop_db_stmt(SQLParser.Drop_db_stmtContext ctx, Context context) {
