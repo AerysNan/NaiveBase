@@ -23,6 +23,7 @@ sql_stmt :
     | use_db_stmt
     | show_db_stmt
     | show_table_stmt
+    | show_meta_stmt
     | quit_stmt
     | update_stmt ;
 
@@ -41,6 +42,9 @@ drop_user_stmt :
 create_table_stmt :
     K_CREATE K_TABLE table_name
         '(' column_def ( ',' column_def )* ( ',' table_constraint )? ')' ;
+
+show_meta_stmt :
+    K_SHOW K_TABLE table_name ;
 
 grant_stmt :
     K_GRANT auth_level ( ',' auth_level )* K_ON table_name K_TO user_name ;

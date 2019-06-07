@@ -31,7 +31,7 @@ public class Manager {
         this.users = new HashSet<>();
         recoverDatabases();
         Context adminContext = new Context(adminUserName, adminDatabaseName);
-        createDatabaseIfNotExists(adminDatabaseName, adminContext);
+        createDatabaseIfNotExists(adminContext);
         dirInit();
         if (!databases.get(adminDatabaseName).tables.containsKey(authTableName)) {
             createTable(authTableName,
@@ -152,14 +152,14 @@ public class Manager {
         }
     }
 
-    private boolean authorized(String tableName, int level, Context context) {
+    private boolean notAuthorized(String tableName, int level, Context context) {
         if (context.username.equals(adminUserName))
-            return true;
+            return false;
         try {
             int currentAuth = getAuth(context.username, context.databaseName, tableName);
-            return currentAuth > 0 && (currentAuth & (1 << level)) > 0;
+            return currentAuth <= 0 || (currentAuth & (1 << level)) <= 0;
         } catch (Exception e) {
-            return false;
+            return true;
         }
     }
 
@@ -204,6 +204,33 @@ public class Manager {
         }
     }
 
+    public String showMeta(String tableName, Context context) {
+        Database database = getDatabase(context.databaseName);
+        Table table = database.getTable(tableName);
+        ArrayList<Cell> header = new ArrayList<>();
+        header.add(new Cell("NAME"));
+        header.add(new Cell("TYPE"));
+        header.add(new Cell("PRIMARY"));
+        header.add(new Cell("NOTNULL"));
+        List<List<Cell>> body = new ArrayList<>();
+        for (Column c : table.columns) {
+            ArrayList<Cell> row = new ArrayList<>();
+            row.add(new Cell(c.name));
+            row.add(new Cell(c.type.toString()));
+            String primary;
+            if (c.primary == 1)
+                primary = "true";
+            else if (c.primary == 2)
+                primary = "composite";
+            else
+                primary = "false";
+            row.add(new Cell(primary));
+            row.add(new Cell(String.valueOf(c.notNull)));
+            body.add(row);
+        }
+        return new PrintFormat.ConsoleTableBuilder().addHeaders(header).addRows(body).build().getContent();
+    }
+
     public void logout(String username) {
         users.remove(username);
     }
@@ -239,16 +266,14 @@ public class Manager {
         }
     }
 
-    private void createDatabaseIfNotExists(String name, Context context) {
+    private void createDatabaseIfNotExists(Context context) {
         if (!context.username.equals(adminUserName))
             throw new NoAuthorityException();
-        if (!skipCheck && name.equals(authTableName))
-            throw new ReservedNameException(name);
         try {
             lock.writeLock().lock();
-            if (databases.containsKey(name))
+            if (databases.containsKey(global.Global.adminDatabaseName))
                 return;
-            createDatabase(name, context);
+            createDatabase(global.Global.adminDatabaseName, context);
         } finally {
             lock.writeLock().unlock();
         }
@@ -308,7 +333,7 @@ public class Manager {
     }
 
     public void deleteTable(String tableName, boolean exist, Context context) {
-        if (!authorized(tableName, AUTH_DROP, context))
+        if (notAuthorized(tableName, AUTH_DROP, context))
             throw new NoAuthorityException();
         Database database = getDatabase(context.databaseName);
         try {
@@ -352,7 +377,7 @@ public class Manager {
     }
 
     public void insert(String tableName, String[] values, String[] columnNames, Context context) {
-        if (!authorized(tableName, AUTH_INSERT, context))
+        if (notAuthorized(tableName, AUTH_INSERT, context))
             throw new NoAuthorityException();
         Database database = getDatabase(context.databaseName);
         Table table = database.getTable(tableName);
@@ -414,11 +439,11 @@ public class Manager {
     public String select(String[] columnsProjected, QueryTable[] queryTables, Logic selectLogic, boolean distinct, Context context) {
         for (QueryTable queryTable : queryTables) {
             if (queryTable instanceof SimpleTable) {
-                if (!authorized(((SimpleTable) queryTable).getTable().tableName, AUTH_SELECT, context))
+                if (notAuthorized(((SimpleTable) queryTable).getTable().tableName, AUTH_SELECT, context))
                     throw new NoAuthorityException();
             } else if (queryTable instanceof JointTable) {
                 for (Table table : ((JointTable) queryTable).getTables())
-                    if (!authorized(table.tableName, AUTH_SELECT, context))
+                    if (notAuthorized(table.tableName, AUTH_SELECT, context))
                         throw new NoAuthorityException();
             }
         }
@@ -427,7 +452,7 @@ public class Manager {
     }
 
     public String delete(String tableName, Logic logic, Context context) {
-        if (!authorized(tableName, AUTH_DELETE, context))
+        if (notAuthorized(tableName, AUTH_DELETE, context))
             throw new NoAuthorityException();
         Database database = getDatabase(context.databaseName);
         Table table = database.getTable(tableName);
@@ -435,7 +460,7 @@ public class Manager {
     }
 
     public String update(String tableName, String columnName, Expression expression, Logic logic, Context context) {
-        if (!authorized(tableName, AUTH_UPDATE, context))
+        if (notAuthorized(tableName, AUTH_UPDATE, context))
             throw new NoAuthorityException();
         Database database = getDatabase(context.databaseName);
         Table table = database.getTable(tableName);
