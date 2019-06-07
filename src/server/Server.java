@@ -51,7 +51,7 @@ public class Server {
         }
         if (cmd.hasOption("h")) {
             HelpFormatter helpFormatter = new HelpFormatter();
-            helpFormatter.printHelp("java -jar client.jar", "", options, "");
+            helpFormatter.printHelp("java -jar server.jar", "", options, "");
             return;
         }
         try {
