@@ -1,10 +1,10 @@
 package schema;
 
-import server.Context;
 import exception.*;
 import format.Cell;
 import format.PrintFormat;
 import query.*;
+import server.Context;
 import type.ColumnType;
 import type.ComparatorType;
 import type.ComparerType;
@@ -133,7 +133,31 @@ public class Manager {
             context.databaseName = adminDatabaseName;
             if (currentAuth != 0)
                 update(authTableName, "authority",
-                        new Expression(new Comparer(ComparerType.NUMBER, String.valueOf(~level & currentAuth))), null, context);
+                        new Expression(new Comparer(ComparerType.NUMBER, String.valueOf(~level & currentAuth))), new Logic(
+                                new Logic(
+                                        new Condition(
+                                                new Expression(new Comparer(ComparerType.COLUMN, "username")),
+                                                new Expression(new Comparer(ComparerType.STRING, username)),
+                                                ComparatorType.EQ
+                                        )
+                                ),
+                                new Logic(
+                                        new Logic(
+                                                new Condition(
+                                                        new Expression(new Comparer(ComparerType.COLUMN, "database_name")),
+                                                        new Expression(new Comparer(ComparerType.STRING, databaseName)),
+                                                        ComparatorType.EQ
+                                                )
+                                        ),
+                                        new Logic(new Condition(
+                                                new Expression(new Comparer(ComparerType.COLUMN, "table_name")),
+                                                new Expression(new Comparer(ComparerType.STRING, tableName)),
+                                                ComparatorType.EQ
+                                        )),
+                                        LogicalOpType.AND
+                                ),
+                                LogicalOpType.AND
+                        ), context);
             context.databaseName = databaseName;
         } finally {
             table.lock.writeLock().unlock();
@@ -182,6 +206,8 @@ public class Manager {
     }
 
     public void dropUser(String username, boolean exists, Context context) {
+        if (users.contains(username))
+            throw new UserDeletionException(username);
         Database database = getDatabase(adminDatabaseName);
         Table table = database.getTable(userTableName);
         try {
