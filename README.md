@@ -74,7 +74,7 @@ You can disconnect from server and exit client using `quit` statement.
 
 ## Function
 
-NaiveBase's SQL grammar is slightly different from others commonly-used databases. Some examples are listed as follows. To ensure your grammar is correct, check `src/parser/SQL.g4` for further description.
+NaiveBase's SQL grammar is slightly different from other commonly-used databases. Some examples are listed as follows. To ensure your grammar is correct, please refer to `src/parser/SQL.g4` for further description.
 
 ### Basic SQL Statement
 

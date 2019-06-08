@@ -127,7 +127,7 @@ expression :
     | '(' expression ')';
 
 table_constraint :
-    K_PRIMARY K_KEY '(' column_name (',' column_name)* ')' ','? ;
+    K_PRIMARY K_KEY '(' column_name (',' column_name)* ')' ;
 
 result_column
     : '*'
