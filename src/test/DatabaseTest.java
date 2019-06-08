@@ -16,6 +16,7 @@ import java.util.ArrayList;
 
 import static org.junit.Assert.assertEquals;
 
+//测试select的正确性
 public class DatabaseTest {
     private Manager manager;
     private Database database;
@@ -40,6 +41,9 @@ public class DatabaseTest {
         return new JointTable(list, buildSimpleLogic(onCondition));
     }
 
+    //预先添加两张表，并添加一些有规律的数据以便比较
+    //注：由于输出格式的原因，若select结果为空则返回"Empty set."，
+    //否则会返回格式化的表格，因此行数会多5。
     @Before
     public void setUp() {
         manager = new Manager();
@@ -71,7 +75,7 @@ public class DatabaseTest {
         Expression right = buildSimpleNumberExpression("2");
         Condition condition = new Condition(left, right, ComparatorType.EQ);
         String result = database.select(null, tablesQueried, buildSimpleLogic(condition), false);
-        assertEquals("Empty set.", result);
+        assertEquals("Empty set.", result);//where 1=2为false，故逻辑上应该为空
     }
 
     @Test
@@ -82,7 +86,7 @@ public class DatabaseTest {
         Expression right = buildSimpleNumberExpression("1000");
         Condition condition = new Condition(left, right, ComparatorType.GT);
         String result = database.select(null, tablesQueried, buildSimpleLogic(condition), false);
-        assertEquals("Empty set.", result);
+        assertEquals("Empty set.", result);//不存在id>1000的行，故逻辑上结果应该为空
     }
 
     @Test
@@ -93,7 +97,7 @@ public class DatabaseTest {
         Expression right = buildSimpleNumberExpression("2");
         Condition condition = new Condition(left, right, ComparatorType.LE);
         String result = database.select(null, tablesQueried, buildSimpleLogic(condition), false);
-        assertEquals(testNum + 5, result.split("\n").length);
+        assertEquals(testNum + 5, result.split("\n").length);//where 1<=2为true，故逻辑上应该为所有行
     }
 
     @Test
@@ -104,7 +108,7 @@ public class DatabaseTest {
         Expression right = buildSimpleColumnExpression("score");
         Condition condition = new Condition(left, right, ComparatorType.LT);
         String result = database.select(null, tablesQueried, buildSimpleLogic(condition), false);
-        assertEquals(testNum + 5, result.split("\n").length);
+        assertEquals(testNum + 5, result.split("\n").length);//所有行的score都满足score>-1000，故逻辑上结果应该为所有行。
     }
 
     @Test
@@ -115,7 +119,7 @@ public class DatabaseTest {
         Expression right = buildSimpleColumnExpression("score");
         Condition condition = new Condition(left, right, ComparatorType.EQ);
         String result = database.select(null, tablesQueried, buildSimpleLogic(condition), false);
-        assertEquals(1 + 5, result.split("\n").length);
+        assertEquals(1 + 5, result.split("\n").length);//两条线只有一个交点，应该只有一行数据的id和score相等，故逻辑上结果应该只有一行。
     }
 
     @Test
@@ -126,7 +130,7 @@ public class DatabaseTest {
         Expression right = buildSimpleColumnExpression("score");
         Condition condition = new Condition(left, right, ComparatorType.NE);
         String result = database.select(null, tablesQueried, buildSimpleLogic(condition), false);
-        assertEquals(testNum - 1 + 5, result.split("\n").length);
+        assertEquals(testNum - 1 + 5, result.split("\n").length);//两条线只有一个交点，应该只有一行数据的id和score不相等。故逻辑上结果应该为testNum-1行。
     }
 
     @Test
@@ -137,7 +141,7 @@ public class DatabaseTest {
         Expression right = buildSimpleNumberExpression("1000");
         Condition condition = new Condition(left, right, ComparatorType.LE);
         String result = database.select(null, tablesQueried, buildSimpleLogic(condition), false);
-        assertEquals(testNum + 5, result.split("\n").length);
+        assertEquals(testNum + 5, result.split("\n").length);//所有行的id都满足id<=1000，故逻辑上结果应该为所有行。
     }
 
     @Test
@@ -148,7 +152,7 @@ public class DatabaseTest {
         Expression right = buildSimpleNumberExpression("1000");
         Condition condition = new Condition(left, right, ComparatorType.GT);
         String result = database.select(null, tablesQueried, buildSimpleLogic(condition), false);
-        assertEquals("Empty set.", result);
+        assertEquals("Empty set.", result);//所有行的id都不满足id>1000，故逻辑上结果应该为空。
     }
 
     @Test
@@ -159,7 +163,7 @@ public class DatabaseTest {
         Expression right = buildSimpleColumnExpression("score");
         Condition condition = new Condition(left, right, ComparatorType.GT);
         String result = database.select(null, tablesQueried, buildSimpleLogic(condition), false);
-        assertEquals(testNum + 5, result.split("\n").length);
+        assertEquals(testNum + 5, result.split("\n").length);//所有行的score都满足1000>score，故逻辑上结果应该为所有行。
     }
 
     @Test
@@ -170,7 +174,7 @@ public class DatabaseTest {
         Expression right = buildSimpleColumnExpression("score");
         Condition condition = new Condition(left, right, ComparatorType.LT);
         String result = database.select(null, tablesQueried, buildSimpleLogic(condition), false);
-        assertEquals("Empty set.", result);
+        assertEquals("Empty set.", result);//所有行的score都满足1000<score，故逻辑上结果应该为所有行。
     }
 
     @Test
@@ -181,7 +185,7 @@ public class DatabaseTest {
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = buildSimpleJoinTable(onCondition);
         String result = database.select(null, tablesQueried, null, false);
-        assertEquals("Empty set.", result);
+        assertEquals("Empty set.", result);//多表join的on条件为1=2，故逻辑上结果应该为空。
     }
 
     @Test
@@ -192,7 +196,7 @@ public class DatabaseTest {
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = buildSimpleJoinTable(onCondition);
         String result = database.select(null, tablesQueried, null, false);
-        assertEquals(testNum * testNum + 5, result.split("\n").length);
+        assertEquals(testNum * testNum + 5, result.split("\n").length);//多表join的on条件为1<2，故逻辑上结果应该为所有行。
     }
 
     @Test
@@ -203,7 +207,7 @@ public class DatabaseTest {
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = buildSimpleJoinTable(onCondition);
         String result = database.select(null, tablesQueried, null, false);
-        assertEquals("Empty set.", result);
+        assertEquals("Empty set.", result);//多表join的on条件为grade.id=1001，故逻辑上应该为空。
     }
 
     @Test
@@ -214,7 +218,7 @@ public class DatabaseTest {
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = buildSimpleJoinTable(onCondition);
         String result = database.select(null, tablesQueried, null, false);
-        assertEquals(testNum + 5, result.split("\n").length);
+        assertEquals(testNum + 5, result.split("\n").length);//多表join的on条件为grade.id=11，故逻辑上结果应该为testNum行。
     }
 
     @Test
@@ -225,7 +229,7 @@ public class DatabaseTest {
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = buildSimpleJoinTable(onCondition);
         String result = database.select(null, tablesQueried, null, false);
-        assertEquals(testNum * testNum + 5, result.split("\n").length);
+        assertEquals(testNum * testNum + 5, result.split("\n").length);//多表join的on条件为grade.id<10001，故逻辑上结果应该为所有行。
     }
 
     @Test
@@ -236,7 +240,7 @@ public class DatabaseTest {
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = buildSimpleJoinTable(onCondition);
         String result = database.select(null, tablesQueried, null, false);
-        assertEquals(testNum + 5, result.split("\n").length);
+        assertEquals(testNum + 5, result.split("\n").length);//多表join的on条件为grade.id=grades.id，故逻辑上结果应该为testNum行。
     }
 
     @Test
@@ -247,7 +251,7 @@ public class DatabaseTest {
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = buildSimpleJoinTable(onCondition);
         String result = database.select(null, tablesQueried, null, false);
-        assertEquals(testNum * (testNum - 1) + 5, result.split("\n").length);
+        assertEquals(testNum * (testNum - 1) + 5, result.split("\n").length);//多表join的on条件为grade.id!=grades.id，故逻辑上结果应该为testNum*(testNum-1)行。
     }
 
     @Test
@@ -258,7 +262,7 @@ public class DatabaseTest {
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = buildSimpleJoinTable(onCondition);
         String result = database.select(null, tablesQueried, null, false);
-        assertEquals(testNum * testNum + 5, result.split("\n").length);
+        assertEquals(testNum * testNum + 5, result.split("\n").length);//多表join的on条件为grade.score<1000，故逻辑上结果应该为所有行。
     }
 
     @Test
@@ -269,7 +273,7 @@ public class DatabaseTest {
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = buildSimpleJoinTable(onCondition);
         String result = database.select(null, tablesQueried, null, false);
-        assertEquals(testNum + 5, result.split("\n").length);
+        assertEquals(testNum + 5, result.split("\n").length);//多表join的on条件为grade.score=1，故逻辑上结果应该为testNum行。
     }
 
     @Test
@@ -280,7 +284,7 @@ public class DatabaseTest {
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = buildSimpleJoinTable(onCondition);
         String result = database.select(null, tablesQueried, null, false);
-        assertEquals("Empty set.", result);
+        assertEquals("Empty set.", result);//多表join的on条件为grade.score=1000，故逻辑上应该为空。
     }
 
     @Test
@@ -294,7 +298,7 @@ public class DatabaseTest {
         JointTable[] tablesQueried = new JointTable[1];
         tablesQueried[0] = buildSimpleJoinTable(onCondition);
         String result = database.select(null, tablesQueried, buildSimpleLogic(whereCondition), false);
-        assertEquals(testNum - 1 + 5, result.split("\n").length);
+        assertEquals(testNum - 1 + 5, result.split("\n").length);//多表join的on条件为grade.id!=grades.id，where条件为grade.score = 1。故逻辑上结果应该为testNum-1行。
     }
 
     @After
