@@ -17,11 +17,13 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 
+//测试用户管理以及多主键
 public class ManagerTest {
     private Manager manager;
     private Context context;
     private int userCount = 100;
 
+    //添加一些用户
     @Before
     public void before() {
         manager = new Manager();
@@ -58,10 +60,11 @@ public class ManagerTest {
                         new Entry(j),
                         new Entry((double) (i * j))
                 };
-                assertTrue(manager.get("test_composite", new Entry[]{fst, snd}, context).toString().contains(new Row(e, -1).toString()));
+                assertTrue(manager.get("test_composite", new Entry[]{fst, snd}, context).toString().contains(new Row(e, -1).toString()));//测试多主键的get结果是否符合预期
             }
         }
     }
+
 
     @Test
     public void testConcurrentCreateTable() throws InterruptedException {
@@ -84,7 +87,7 @@ public class ManagerTest {
         }
         for (Thread thread : threads)
             thread.join();
-        assertEquals(testNum - 1, collision.intValue());
+        assertEquals(testNum - 1, collision.intValue());//通过并发的创建同一张表，捕捉不同用户创建相同表碰撞的异常，最后应该只有一张表创建成功不会抛出异常。
     }
 
     @Test
@@ -94,6 +97,7 @@ public class ManagerTest {
         manager.createTable("concurrentDropTable", new Column[]{
                 new Column("id", ColumnType.INT, 1, true, -1)
         }, new Context(Global.adminUserName, "test"));
+        //为生成用户添加操作测试表的权限，用来之后删除表的并发测试
         for (int i = 0; i < userCount; i++)
             manager.addAuth("User" + i, "concurrentDropTable", 1 << Global.AUTH_DROP, new Context(Global.adminUserName, "test"));
         AtomicInteger collision = new AtomicInteger(0);
@@ -111,7 +115,7 @@ public class ManagerTest {
         }
         for (Thread thread : threads)
             thread.join();
-        assertEquals(testNum - 1, collision.intValue());
+        assertEquals(testNum - 1, collision.intValue());//通过并发的删除之前创建的同一张表，捕捉不同用户并发删除表后表已不存在的异常，最后应该只有一位用户删除成功不会抛出异常。
     }
 
     @Test
@@ -136,7 +140,7 @@ public class ManagerTest {
                     new Entry("A"),
                     new Entry((double) (100 - i))
             };
-            assertEquals(new Row(e, -1).toString(), manager.get("test_get", new Entry[]{key}, context).toString());
+            assertEquals(new Row(e, -1).toString(), manager.get("test_get", new Entry[]{key}, context).toString());//测试单主键的get结果是否符合预期
         }
     }
 
