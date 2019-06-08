@@ -1,6 +1,6 @@
-drop database if exists school;
-create database school;
-use school;
+drop database if exists report;
+create database report;
+use report;
 
 create table department (
   department_id int,
